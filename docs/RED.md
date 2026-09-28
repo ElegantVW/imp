@@ -872,6 +872,20 @@ mold (1 + 2 % 3)      →  "0"     ;-- (1+2)%3 — NOT 1 + (2%3)
 `7 remainder 3` is **not** a call and errors **[V]**. Write
 `remainder 7 3`.
 
+**`//` is modulo, not division.** `mold (7 // 3)` is `"1"` — that is
+`7 mod 3`, not `7 ÷ 3` (which would be `2`). This is the trap that cost
+the TUI its mode cycler: `pick MODES (h // 12)` was meant to split 24
+hours into two halves, but `//` gave `h mod 12` (0–11), and `pick` is
+1-based, so any index above 2 returned `none`. Measured: `mode-text` was
+`none` at hour 8. For division use `divide` (returns `decimal!`, so wrap
+with `to integer!`) and add 1 for a 1-based `pick`:
+
+```
+mold (divide 8 12)              →  "0.66666666666666666667"
+mold (to integer! (divide 8 12)) →  "0"
+pick ["normal" "braille"] (to integer! (divide 8 12) + 1)  →  normal
+```
+
 > ⚠️ A single harness question once reported `mold (7 % 3)` as `DEAD` when
 > `%` is perfectly fine. The report is the evidence, but the *harness* was at
 > fault. When a surprising result contradicts the source, re-run it in a
@@ -1955,3 +1969,103 @@ support.
 `docs/GRIMOIRE.md` is the exit. This document is the map of the ground
 between here and there — including the parts of the map that were drawn
 wrong.
+
+## 26. The view dialect (VID)
+
+VID is the layout dialect inside `layout`. It is not Red. It has its own
+parser, its own error codes, and its own traps. Six of them cost the TUI
+a long stretch, and all six are silent — the window simply never opens.
+
+### 26.1 `layout compose/deep` + `on-key` is a syntax error **[V]**
+
+`vid-invalid-syntax`, and nothing is drawn. `compose/deep` alone works.
+`on-key` alone works. A plain `layout` with both works. **Only the
+combination fails.**
+
+```
+;-- all three of these are fine
+layout [title "imp" on-key [switch event/key [left [print "x"]]]]
+layout compose/deep [title "imp" image 192x192 pic]
+layout [title "imp" image 192x192 pic on-key [switch event/key [left [print "x"]]]]
+
+;-- this one is not
+layout compose/deep [title "imp" on-key [switch event/key [left [print "x"]]]]
+```
+
+`compose/deep` was there to splice a global `file!` into the `image`
+widget. A plain `layout` splices a global `file!` just as well, so
+nothing is lost by dropping it.
+
+### 26.2 VID takes a literal, not an expression **[V]**
+
+`text 200 (mold mode)` is `vid-invalid-syntax`. So is
+`text 200 (mold mode) font [...]`. Bind the value to a word first, then
+use the word:
+
+```
+mode-text: form mode          ;-- outside the layout
+mode-face: text 200 mode-text font [color: 210.210.220 size: 12]
+```
+
+### 26.3 `on-key` goes FIRST in the layout **[V]**
+
+With `on-key` last, `win/actors` is `none` — the actor is never
+attached, and the key does nothing. The reference TUI in
+`red-view-src/tests/TUI/tui.red` puts it first and references a face
+defined later in the same layout, and it works.
+
+```
+win: layout [
+    title "imp"
+    on-key [switch event/key [#"l" [mode-face/text: "braille"]]]
+    text 320 "mode"
+    mode-face: text 200 "normal"
+]
+```
+
+An actor **can** reference a face defined later in the same layout. The
+`unset-path` error comes from `compose/deep`, not from the ordering.
+
+### 26.4 A synthetic event's key is a char; a real arrow key is a word **[V]**
+
+`event/key` for a synthetic event is read from the low 16 bits of
+`flags` as a **char** (`event.reds`). A real arrow key is translated by
+the GTK backend into a **word** — `_left`, `_right`, `_up`, `_down`
+(`gtk3/events.reds`, `get-event-key`). A switch on `left` matches
+neither.
+
+```
+;-- synthetic (rite): char
+send-event make event! [type: 'key key: #"l" face: win]
+;-- real arrow key: word
+;-- event/key = _left
+```
+
+The actor must switch on both shapes:
+
+```
+on-key [
+    switch event/key [
+        #"l"  [mode-face/text: "braille"]   ;-- synthetic
+        _left [mode-face/text: "braille"]   ;-- real
+    ]
+]
+```
+
+### 26.5 `mold` of a string is a curly-brace string **[V]**
+
+Covered in §8.3, but it belongs here too because it is what breaks VID
+faces. `mold "normal"` is `{"normal"}`, and that is what lands in the
+face. A rite searching for `"normal"` never matches. `form "normal"` is
+`normal`. **Use `form` for face text.**
+
+### 26.6 The six VID traps, as one table
+
+| # | trap | rule |
+|---|---|---|
+| 55 | `compose/deep` + `on-key` | `vid-invalid-syntax` — plain `layout` only |
+| 56 | VID takes a literal | `text 200 (expr)` is a syntax error — bind to a word |
+| 57 | `mold` ≠ `form` | `mold "x"` is `{"x"}`; `form "x"` is `x` |
+| 58 | `//` is modulo | `pick MODES (h // 12)` is `none` for h≥2 — use `divide` + 1 |
+| 59 | synthetic key = char | `key: #"l"` → `#"l"`; real arrow = `_left` — switch on both |
+| 60 | `on-key` goes first | last → `win/actors` is `none` |
