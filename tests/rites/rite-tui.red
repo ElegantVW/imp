@@ -103,12 +103,19 @@ either (faces >= 4) [
     say "D mode-cycler: BROKEN, the layout has too few faces"
 ]
 
-; ── F: the conjure button is there, and it is a button ─────────────
-btn: none
+; ── F: both buttons are there — conjure and quit, by their own words
+n-btn: 0
+conjure?: false
+quit?: false
 foreach f pane [
-    if (f/type = 'button) [btn: f]
+    if (f/type = 'button) [
+        n-btn: n-btn + 1
+        if ((f/text) = "conjure") [conjure?: true]
+        if ((f/text) = "quit") [quit?: true]
+    ]
 ]
-say "F conjure-button: " [either btn ["SEALED"]["BROKEN, no button in the pane"]]
+say "F buttons: " [either ((n-btn = 2) and conjure? and quit?) ["SEALED"]["BROKEN"]]
+say "   buttons: " [n-btn]
 
 ; ── G: the image is LAST, because the old rite picks the last face ─
 ; faces are all type 'base in this build (mold gives "base"), so prove
@@ -122,9 +129,63 @@ either (faces >= 1) [
     say "G image-last: " ["BROKEN, empty pane"]
 ]
 
-say "E single-write: " ["SEALED - this file is the only product"]
+; ── K: a q from the wish field does NOT quit — typing is safe ─────
+k-pre: either (screen/pane = none) [0][length? screen/pane]
+send-event make event! [type: 'key-down key: #"q" face: wish-face]
+do-events/no-wait
+do-events/no-wait
+k-screen: system/view/screens/1
+k-post: either (k-screen/pane = none) [0][length? k-screen/pane]
+say "K field-q-safe: " [either (k-post = k-pre) ["SEALED"]["BROKEN, a field q closed the window"]]
 
-unview/all
+; ── I: the quit button's click dispatch closes the window ─────────
+; Synthetic clicks do not inject (hazard 61), so dispatch the actor
+; the way the event loop would: do-actor on the quit face, then pump.
+quit-btn: none
+foreach f pane [
+    if (f/type = 'button) [
+        if ((f/text) = "quit") [quit-btn: f]
+    ]
+]
+either quit-btn [
+    pre-n: either (screen/pane = none) [0][length? screen/pane]
+    evt: make event! [type: 'click face: quit-btn]
+    do-actor quit-btn evt 'click
+    repeat k 5 [do-events/no-wait]
+    mid-screen: system/view/screens/1
+    mid-n: either (mid-screen/pane = none) [0][length? mid-screen/pane]
+    say "I quit-dispatch: " [either (mid-n < pre-n) ["SEALED"]["BROKEN, dispatch did not close"]]
+    view/no-wait win
+    repeat k 5 [do-events/no-wait]
+][
+    say "I quit-dispatch: " ["SKIPPED, no quit face"]
+]
+
+; ── H: q quits the window, through the same key path as the cycler
+before-n: either (screen/pane = none) [0][length? screen/pane]
+send-event make event! [type: 'key key: #"q" face: win]
+do-events/no-wait
+do-events/no-wait
+screen2: system/view/screens/1
+after-n: either (screen2/pane = none) [0][length? screen2/pane]
+say "H quit-key: " [either (after-n < before-n) ["SEALED"]["BROKEN, the window stayed open"]]
+
+; ── J: key-DOWN q quits too — the path real fingers take ────────────
+; H's on-key char never fires for a real press (hazard 62: the backend
+; yields none there for letters). Re-view, send a key-down, reseal.
+view/no-wait win
+repeat k 5 [do-events/no-wait]
+view/no-wait win
+repeat k 5 [do-events/no-wait]
+pre2-n: either (screen/pane = none) [0][length? screen/pane]
+send-event make event! [type: 'key-down key: #"q" face: win]
+do-events/no-wait
+do-events/no-wait
+screen3: system/view/screens/1
+post2-n: either (screen3/pane = none) [0][length? screen3/pane]
+say "J quit-keydown: " [either (post2-n < pre2-n) ["SEALED"]["BROKEN, key-down did not close"]]
+
+say "E single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/tui-tmp.txt rejoin led
 rename %/dev/shm/imp/tui-tmp.txt %/dev/shm/imp/tui-witness.txt

@@ -1,5 +1,37 @@
 # Imp changelog
 
+## v0.8.0 (2026-09-28) — the window learns manners, and a way out
+
+Two complaints, both fair: the window was absurdly wide and tall for
+what it holds, and there was no way to leave it except killing the
+process. Both fixed, nothing else touched — the picture stays 300×300.
+
+**Three rows instead of ten.** The controls were stacked one per row:
+label, field, label, value, label, value, button, status, flame. Now
+they share rows (`across`): wish + conjure + quit on one line, mode +
+size on the next, status + flame on the last. The window went from
+2120×320 to 470×428 — shorter, narrower, and no longer wider than the
+desktop it opens on. The busy face is still there, a 10px sliver the
+colour of the backdrop: state lives in faces, but it does not have to
+be seen.
+
+**Quit, two ways.** A quit button beside conjure, and `q`. The key
+took three attempts to exist: `#"q"` in `on-key` matches synthetic
+events only (hazard 62 — real letters arrive as `none` there), so the
+key lives on `on-key-down`, where real and synthetic both arrive as
+chars. And the first live typing test closed the window: key-downs
+bubble field→window, so a q typed inside a wish would have been the
+most destructive letter on the keyboard. The guard is `same?`
+`event/face` against the wish field. Typing is safe and window-focus
+q quits — both verified with real keypresses through xdotool, not
+just synthetic ones.
+
+```
+F buttons: "SEALED"   buttons: 2   G image-last: "SEALED"   last width: 300
+K field-q-safe: "SEALED"   I quit-dispatch: "SEALED"
+H quit-key: "SEALED"   J quit-keydown: "SEALED"
+```
+
 ## v0.7.0 (2026-09-28) — the window stays open, and a flame while it thinks
 
 Conjure used to close the only door it came through. The button was

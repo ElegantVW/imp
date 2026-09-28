@@ -91,6 +91,12 @@ either exists? pic [
 ; `compose/deep` was there to splice the `pic` global into the image, but
 ; a plain `layout` splices a global file! just as well.
 ;
+; THE CONTROLS SHARE ROWS (`across`), three of them, so the window is
+; short: wish + both buttons, mode + size, status + flame. The picture
+; keeps its 300x300. `busy-face` is a 10px face in the mode row, text
+; the colour of the backdrop — state has to live in a face, and it does
+; not have to be seen.
+;
 ; THE FACE TEXTS ARE BOUND OUTSIDE THE LAYOUT, WITH `form`, NOT `mold`.
 ; Two VID traps here:
 ;
@@ -140,6 +146,12 @@ con-press: func [/local out][
     ]
     out
 ]
+; ── the way out. NAMED, like the press, so a rite can walk it.
+con-quit: func [/local out][
+    unview/all
+    out: "closed"
+    out
+]
 win: layout [
     title "imp"
     on-key [
@@ -181,26 +193,53 @@ win: layout [
                 i: index? find SIZES size
                 size-face/text: form pick SIZES either (i = 1) [length? SIZES][i - 1]
             ]
+            #"q" [
+                con-quit
+            ]
+            #"Q" [
+                con-quit
+            ]
+        ]
+    ]
+    on-key-down [
+        ; REAL letters never reach on-key: on a key PRESS the GTK
+        ; backend yields none for anything but specials (hazard 62).
+        ; The chars arrive here instead, on key-down. Synthetic
+        ; key-downs arrive as chars too, so the rite walks this path.
+        ;
+        ; THE FIELD IS EXEMPT. Key-downs bubble from the focused face
+        ; to the window, so without this a q typed inside a wish would
+        ; close the only door (measured live). same? tells faces apart.
+        switch event/key [
+            #"q" [
+                either (same? event/face wish-face) [
+                ][
+                    con-quit
+                ]
+            ]
+            #"Q" [
+                either (same? event/face wish-face) [
+                ][
+                    con-quit
+                ]
+            ]
         ]
     ]
     backdrop 18.18.24
-    below
-    text 320 "wish" font [color: 140.140.160 size: 9]
-    wish-face: field 300
-    return
-    text 320 "mode" font [color: 140.140.160 size: 9]
-    mode-face: text 200 mode-text font [color: 210.210.220 size: 12]
-    return
-    text 320 "size" font [color: 140.140.160 size: 9]
-    size-face: text 200 size-text font [color: 210.210.220 size: 12]
-    return
+    across
+    text 40 "wish" font [color: 140.140.160 size: 9]
+    wish-face: field 200
     button 120 "conjure" [con-press]
+    button 60 "quit" [con-quit]
     return
-    status-face: text 320 ready-text font [color: 140.140.160 size: 9]
-    return
+    text 40 "mode" font [color: 140.140.160 size: 9]
+    mode-face: text 80 mode-text font [color: 210.210.220 size: 12]
+    text 40 "size" font [color: 140.140.160 size: 9]
+    size-face: text 80 size-text font [color: 210.210.220 size: 12]
     busy-face: text 10 "0" font [color: 18.18.24 size: 1]
     return
-    flame-face: text 320 idle-flame font [color: 220.90.40 size: 14] rate 0:0:0.06 on-time [
+    status-face: text 300 ready-text font [color: 140.140.160 size: 9]
+    flame-face: text 110 idle-flame font [color: 220.90.40 size: 14] rate 0:0:0.06 on-time [
         either (busy-face/text = "1") [
             flame-face/text: con-next-flame flame-face/text
             status-face/text: form con-tick
