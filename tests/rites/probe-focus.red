@@ -12,7 +12,7 @@ either error? r1 [
     say "same-missing: " ["YES - same? does not exist"]
 ][
     say "same-self: " [r1]
-    r2: try [same? wish-face mode-face]
+    r2: try [same? wish-face size-dd]
     say "same-other: " [r2]
 ]
 say "E single-write: " ["SEALED - this file is the only product"]

@@ -71,33 +71,17 @@ either (faces >= 5) [
     say "C image-present: BROKEN, the layout has too few faces"
 ]
 
-; ── D: the mode is single, and the size cycler works ──────────────
-; Braille is out, so there is nothing to cycle between: the face says
-; normal. The u key still walks the seven presets in the drop-down.
-either (faces >= 4) [
-    mode-f: none
-    foreach f pane [
-        if (f/type = 'text) [
-            if ((f/text = "normal") or (f/text = "braille")) [mode-f: f]
-        ]
-    ]
-    either mode-f [
-        say "   mode: " [mode-f/text]
-        say "D mode-single: " [either ((mode-f/text) = "normal") ["SEALED"]["BROKEN"]]
-    ][
-        say "D mode-single: BROKEN, no mode face in the pane"
-    ]
-    u0: size-dd/selected
-    send-event make event! [type: 'key key: #"u" face: win]
-    do-events/no-wait
-    do-events/no-wait
-    u1: size-dd/selected
-    say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
-    say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
-][
-    say "D mode-single: BROKEN, the layout has too few faces"
-    say "D size-cycler: BROKEN, the layout has too few faces"
-]
+; ── D: the size cycler works ───────────────────────────────────────
+; The u key walks the seven presets in the drop-down. Read the index,
+; send the key, pump, read it again; they must differ. Custom is empty
+; throughout, so the drop-down is what would run.
+u0: size-dd/selected
+send-event make event! [type: 'key key: #"u" face: win]
+do-events/no-wait
+do-events/no-wait
+u1: size-dd/selected
+say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
+say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 
 ; ── F: the three buttons are there — conjure, quit, enhance ───────
 n-btn: 0

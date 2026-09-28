@@ -111,9 +111,9 @@ CON-SD:    con-get "sd"    ""
 CON-LLM:   con-get "llm"    "imp"
 CON-LLM-URL: con-get "llm-url" "http://127.0.0.1:8082/v1/chat/completions"
 
-CON-LLM-SYS-ART: "You write prompts for an image model. Reply with ONE flowing sentence describing a single scene. Name the subject, the setting, the weather, the light and the mood. No quotation marks, no lists, no preamble, no explanation. Just the sentence."
+CON-LLM-SYS-ART: "You write prompts for an image model. Reply with ONE flowing sentence describing a single scene. Name the subject, the setting, the weather, the light and the mood. No quotation marks, no lists, no preamble, no explanation. Just the sentence. /no_think"
 
-CON-LLM-SYS-MOCK: "You are a small and ancient dragon who has just watched a mortal conjure a picture, and you find it inadequate. Reply with ONE short line of at most 45 characters: smug, dry, faintly cruel, all-ages, never a slur. No quotation marks. No preamble. Just the line."
+CON-LLM-SYS-MOCK: "You are a small and ancient dragon who has just watched a mortal conjure a picture, and you find it inadequate. Reply with ONE short line of at most 45 characters: smug, dry, faintly cruel, all-ages, never a slur. No quotation marks. No preamble. Just the line. /no_think"
 CON-SD-LIB: con-get "sd-lib" ""
 CON-MODEL: con-get "model" ""
 CON-W: to integer! con-get "w" "512"
@@ -147,8 +147,26 @@ CON-ENH: "on"
 ; ── the seven styles. each is name / mouth-directive / sd-suffix.
 ; The mouth gets the directive folded into its orders; with enhance
 ; off the mortal's own words go out with the suffix and nothing else.
-; Suffixes steer the LOOK (light, line, shade) — no exotic tokens,
-; which is also what sd-turbo obeys best.
+; With enhance ON the mouth writes the sentence AND the suffix is
+; appended after — enhance chooses who writes, never whether the
+; style applies. Suffixes steer the LOOK (light, line, shade).
+con-style-entry: func [si [integer!] /local out][
+    out: pick CON-STYLES si
+    either (out = none) [out: pick CON-STYLES 1][]
+    out
+]
+con-style-name: func [si [integer!] /local out][
+    out: pick (con-style-entry si) 1
+    out
+]
+con-style-directive: func [si [integer!] /local out][
+    out: pick (con-style-entry si) 2
+    out
+]
+con-style-suffix: func [si [integer!] /local out][
+    out: pick (con-style-entry si) 3
+    out
+]
 CON-STYLES: [
     ["Photography" "a photograph, realistic light and natural colour" ", photorealistic, natural lighting, 35mm photograph, sharp focus"]
     ["Pixel art" "retro pixel art, crisp pixels and a limited palette" ", pixel art, 16-bit, crisp pixels, limited palette"]
@@ -283,6 +301,9 @@ con-think-strip: func [s [string!] /local out a b tail][
             out: rejoin [copy/part out ((index? a) - 1) tail]
         ]
     ]
+    ; newlines become spaces before the trims, or an emptied answer
+    ; hides behind them and the fallbacks never fire.
+    while [(find out "^/")][out: replace out "^/" " "]
     while [(length? out) > 0][
         either ((pick out 1) = #" ") [out: copy skip out 1][break]
     ]
@@ -329,15 +350,8 @@ con-flatten: func [s [string!] /local out][
 
 ; ── the mortal's own prompt, styled. wish + suffix, flattened. pure:
 ; no IO, no spawn, so a rite can seal it without a GPU.
-con-compose: func [wish [string!] si [integer!] /local entry suffix out][
-    out: copy wish
-    entry: pick CON-STYLES si
-    either (entry = none) [
-        entry: pick CON-STYLES 1
-    ][
-    ]
-    suffix: pick entry 3
-    out: con-flatten rejoin [wish suffix]
+con-compose: func [wish [string!] si [integer!] /local out][
+    out: con-flatten rejoin [wish con-style-suffix si]
     out
 ]
 
@@ -354,6 +368,9 @@ con-hand-cmd: func [/local out][
         "-W " to string! CON-W " -H " to string! CON-H " "
         "--steps " to string! CON-STEPS " "
         "--cfg-scale " to string! CON-CFG " "
+        ; ── THE SEED IS RANDOM. sd-cli defaults to 42, so every wish
+        ; painted the same picture twice. Negative means random.
+        "--seed -1 "
         "-o " con-quote to string! CON-F-IMG " "
         "> " con-quote to string! CON-F-LOG ".cmd" " 2>&1"
     ]
@@ -537,9 +554,11 @@ con-advance-mouth-art: func [rc [integer!] /local out raw][
     raw: con-parse-reply
     either (length? raw) = 0 [
         con-say "the mouth said nothing. using a plain prompt."
-        con-prompt: rejoin [con-wish ", dramatic lighting, high contrast, centred composition"]
+        con-prompt: con-compose con-wish CON-STYLE
     ][
-        con-prompt: con-flatten raw
+        ; the mouth writes; the style still applies. enhance chooses
+        ; who writes the sentence, never whether the style holds.
+        con-prompt: con-flatten rejoin [raw con-style-suffix CON-STYLE]
     ]
     write CON-F-PROMPT con-prompt
     con-say rejoin ["prompt " mold con-prompt]
@@ -619,7 +638,7 @@ con-advance: func [rc [integer!] /local out][
     out
 ]
 
-con-begin: func [wish sz si enh /local out trimmed n entry orders][
+con-begin: func [wish sz si enh /local out trimmed n orders][
     out: "fail: speak a wish first."
     trimmed: try [copy wish]
     either error? trimmed [
@@ -644,8 +663,7 @@ con-begin: func [wish sz si enh /local out trimmed n entry orders][
                 ]
                 CON-STYLE: si
                 either (enh = "off") [CON-ENH: "off"][CON-ENH: "on"]
-                entry: pick CON-STYLES si
-                CON-STYLE-NAME: pick entry 1
+                CON-STYLE-NAME: con-style-name si
                 con-wish: trimmed
                 write CON-F-JOB con-wish
                 con-ledger: copy []
@@ -665,7 +683,7 @@ con-begin: func [wish sz si enh /local out trimmed n entry orders][
                     con-spawn con-cmd
                     out: "the hand is painting..."
                 ][
-                    orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " pick entry 2]
+                    orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " con-style-directive si]
                     CON-PHASE: "mouth-art"
                     con-say "the mouth is asked what to paint"
                     con-ask-start orders con-wish 160
@@ -747,9 +765,9 @@ con-run-paint: func [/local out rc][
     con-prompt-raw: con-ask CON-LLM-SYS-ART con-wish 160
     con-prompt: either (length? con-prompt-raw) = 0 [
         con-say "the mouth said nothing. using a plain prompt."
-        rejoin [con-wish ", dramatic lighting, high contrast, centred composition"]
+        con-compose con-wish CON-STYLE
     ][
-        con-flatten con-prompt-raw
+        con-flatten rejoin [con-prompt-raw con-style-suffix CON-STYLE]
     ]
     write CON-F-PROMPT con-prompt
     con-say rejoin ["prompt " mold con-prompt]

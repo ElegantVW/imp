@@ -1,5 +1,33 @@
 # Imp changelog
 
+## v0.11.0 (2026-09-28) — mode leaves, seeds roll, styles hold both paths, bigger mouth
+
+**Mode is gone.** One mode is not a choice, it is a label. The face
+and its heading left the layout; row two is size only. Styles are
+the options now.
+
+**Variety.** Same prompt painted the same picture every time — not
+the model, the default: sd-cli seeds 42 unless told otherwise.
+`--seed -1` in `con-hand-cmd`. Every wish rolls fresh now.
+
+**The style holds in both paths.** This was a real bug in the last
+release: enhance on wrote the mouth's sentence and quietly dropped
+the suffix, so choosing Mignola with enhance on painted plain turbo.
+Now the suffix appends to the mouth's sentence too. Enhance chooses
+*who writes* (mouth vs you), never *whether the style applies*. The
+mouth's fallback also composes instead of hardcoding, so a silent
+mouth still paints in-style.
+
+**Bigger mouth.** The 0.6B is retired from port 8082; Qwen3-8B
+abliterated serves now (same flags, built-in template — the custom
+`--chat-template` broke the new server's parser, so it was dropped).
+Two things it needed: `/no_think` on both standing orders (without
+it, 160 tokens of thought hit `length` and every call fell back) and
+the strip already in place for the empty shell it leaves behind. The
+dragon spoke on the first 8B run: *A mortal's sketch is but a
+whisper—my scales hold the storm.* The full slow rite re-sealed
+against the new mouth, both paths.
+
 ## v0.10.0 (2026-09-28) — seven styles, an honest mouth, a deadline, a resizable window
 
 Four things at once, because the day demanded all four.

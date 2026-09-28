@@ -59,10 +59,6 @@ do %conjure-lib.red
 ;   to integer! now/time -> 10271   (seconds since midnight)
 ; so the hour is the seconds divided by 3600.
 h: forge-div (to integer! now/time) 3600
-; ── modes, plural, are a promise, not a fact. Braille is out; the new
-; styles arrive with their own design. Until then the face says normal
-; and the l/r cycler is gone with it.
-mode-text: "normal"
 ; Seven presets, as STRINGS: the drop-down's data is text, and the u/d
 ; keys move an index, never arithmetic on the values. `//` is modulo
 ; (hazard 58) — and here that is finally the tool, not the trap: the
@@ -92,7 +88,7 @@ either exists? pic [
 ; a plain `layout` splices a global file! just as well.
 ;
 ; THE CONTROLS SHARE ROWS (`across`), four of them, so the window is
-; short: wish + both buttons, mode + size, style + enhance, status +
+; short: wish + both buttons, size + custom, style + enhance, status +
 ; flame. The picture keeps its 300x300. `busy-face` is a 10px face in
 ; the size row, text the colour of the backdrop — state has to live in
 ; a face, and it does not have to be seen.
@@ -268,8 +264,6 @@ win: layout/flags [
     button 120 "conjure" [con-press]
     button 60 "quit" [con-quit]
     return
-    text 40 "mode" font [color: 140.140.160 size: 9]
-    mode-face: text 80 mode-text font [color: 210.210.220 size: 12]
     text 40 "size" font [color: 140.140.160 size: 9]
     size-dd: drop-down 100 data SIZES
     size-custom: field 80
