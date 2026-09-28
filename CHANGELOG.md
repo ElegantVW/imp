@@ -1,5 +1,37 @@
 # Imp changelog
 
+## v0.12.0 (2026-09-28) — three hands, a steps fader, and the clobber
+
+**Hands.** A drop-down: turbo (4 steps, ~5s), SDXL (20 steps, ~51s),
+Pony (25 steps, ~63s — paints, valid PNG). Each hand brings its own
+sampler contract; the switch sets steps/cfg automatically, and the
+frame's hand row names whoever painted. Pony was converted locally
+with our own binary after every remote GGUF failed to load (this
+build only reads OpenAI-style tensor names — ComfyUI dialect never
+loads, any quant, either flag).
+
+**Steps fader.** A slider, 1–50. New hand → its preset moves the
+slider, visibly. Same hand → your grabbed value runs. No widget
+actors anywhere: the sync lives in `con-sync-steps`, where a rite
+calls it. A custom size that isn't a number is still refused before
+anything spawns.
+
+**The clobber (hazard 65).** The slow proof failed with surgical
+madness: indices right, steps right, suffix right — only the two
+name labels stale. `con-style-name` (func) and `CON-STYLE-NAME:`
+(string) are one word to case-insensitive Red; the first assignment
+replaced the function with its own answer, and every later call
+returned stale text with no error. Single-call rites all passed —
+only the second distinct value in one process failed. Fix:
+verb-first `con-get-style-name` / `con-get-hand-name`. Regression
+seals call twice. The naming law in AGENTS.md now forbids func/value
+pairs that differ by case only.
+
+```
+H0 globals: "SEALED"   globals: "SDXL/Mignola 2/3 off"
+H2 frame-hand: "SEALED"
+```
+
 ## v0.11.0 (2026-09-28) — mode leaves, seeds roll, styles hold both paths, bigger mouth
 
 **Mode is gone.** One mode is not a choice, it is a label. The face

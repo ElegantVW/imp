@@ -151,6 +151,38 @@ c1: con-compose "a fox" 3
 say "P compose: " [either ((((find c1 "mignola") <> none) and ((find c1 "a fox") <> none)) and ((find c1 "<think>") = none)) ["SEALED"]["BROKEN"]]
 say "   composed: " [c1]
 
+; ── hand drop-down, slider, sync ────────────────────────────────────
+say "S hands: " [either ((length? hand-dd/data) = 3) ["SEALED"]["BROKEN"]]
+say "   hands: " [(length? hand-dd/data) "  open: " hand-dd/text]
+say "T slider-home: " [either ((mold step-slider/data) = "8%") ["SEALED"]["BROKEN"]]
+say "   slider: " [(mold step-slider/data)]
+
+; ── Q: a new hand applies its preset, visibly ───────────────────────
+hand-dd/selected: 2
+step-slider/data: 8%
+sync-face/text: "1:8"
+q-steps: con-sync-steps 2
+say "Q sync-preset: " [either (((q-steps = 20) and ((mold step-slider/data) = "40%")) and ((sync-face/text) = "2:40")) ["SEALED"]["BROKEN"]]
+say "   synced: " [(rejoin [q-steps " steps slider=" step-slider/data " sync=" sync-face/text])]
+
+; ── R: same hand runs the grabbed value ─────────────────────────────
+step-slider/data: 60%
+r-steps: con-sync-steps 2
+say "R sync-grab: " [either ((r-steps = 30) and ((sync-face/text) = "2:60")) ["SEALED"]["BROKEN"]]
+say "   grabbed: " [(rejoin [r-steps " steps sync=" sync-face/text])]
+
+; ── S2: hand index round-trips through the drop-down into a name ───
+; Called TWICE with different hands: the old code clobbered the lookup
+; function with its own answer on first use (hazard 65), so the second
+; call is the seal, not the first.
+hand-dd/selected: 2
+hh: hand-dd/selected
+n1: con-get-hand-name hh
+n2: con-get-hand-name 1
+n3: con-get-hand-name hh
+say "S2 hand-name: " [either (((n1 = "SDXL") and (n2 = "turbo")) and (n3 = "SDXL")) ["SEALED"]["BROKEN"]]
+say "   roundtrip: " [(rejoin [hh " -> " n1 "/" n2 "/" n3])]
+
 ; ── I: the quit button's click dispatch closes the window ─────────
 ; Synthetic clicks do not inject (hazard 61), so dispatch the actor
 ; the way the event loop would: do-actor on the quit face, then pump.

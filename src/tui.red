@@ -87,11 +87,11 @@ either exists? pic [
 ; `compose/deep` was there to splice the `pic` global into the image, but
 ; a plain `layout` splices a global file! just as well.
 ;
-; THE CONTROLS SHARE ROWS (`across`), four of them, so the window is
-; short: wish + both buttons, size + custom, style + enhance, status +
-; flame. The picture keeps its 300x300. `busy-face` is a 10px face in
-; the size row, text the colour of the backdrop — state has to live in
-; a face, and it does not have to be seen.
+; THE CONTROLS SHARE ROWS (`across`), five of them, so the window is
+; short: wish + both buttons, size + custom, hand + steps, style +
+; enhance, status + flame. The picture keeps its 300x300. `busy-face`
+; and `sync-face` are 10px faces, text the colour of the backdrop —
+; state has to live in faces, and it does not have to be seen.
 ;
 ; THE WINDOW IS RESIZABLE (`layout/flags [resize]`). Without the flag
 ; the backend marks it fixed and i3 will only ever move it. Resize
@@ -115,7 +115,7 @@ idle-flame: " "
 ; button's on-click in this build (measured: busy stayed "0" through
 ; send-event type 'click), so the rite calls this and the human clicks
 ; it — same words either way. Ends on `out`, never on a conditional.
-con-press: func [/local out sz-text n enh][
+con-press: func [/local out sz-text n enh hi][
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -152,10 +152,15 @@ con-press: func [/local out sz-text n enh][
                         status-face/text: "that size is not a number."
                         out: "that size is not a number."
                     ][
+                        hi: hand-dd/selected
+                        either (hi = none) [hi: 1][
+                            either ((hi < 1) or (hi > length? CON-HANDS)) [hi: 1][]
+                        ]
+                        con-sync-steps hi
                         busy-face/text: "1"
                         flame-face/text: pick CON-FLAMES 1
                         enh: either ((enh-btn/text) = "enhance: off") ["off"]["on"]
-                        status-face/text: form (con-begin wish-face/text sz-text style-dd/selected enh)
+                        status-face/text: form (con-begin wish-face/text sz-text style-dd/selected enh hi)
                         out: status-face/text
                         either ((con-kind status-face/text) = "fail") [
                             busy-face/text: "0"
@@ -186,6 +191,30 @@ con-flip: func [/local out][
         enh-btn/text: "enhance: off"
         out: "enhance: off"
     ]
+    out
+]
+; ── steps sync. The slider shows percent (8% means 4 steps); the sync
+; face remembers "hand:pct" from the last press. New hand → the hand's
+; own preset moves the slider, visibly. Same hand → the grabbed value
+; runs. No widget actors: all of it here, where a rite can call it.
+con-sync-steps: func [hi [integer!] /local pct parts sh sh-try steps out][
+    out: 4
+    pct: to integer! (step-slider/data * 100)
+    parts: sever sync-face/text ":"
+    sh: 0
+    sh-try: try [to integer! pick parts 1]
+    either error? sh-try [sh: 0][sh: sh-try]
+    either (hi <> sh) [
+        steps: con-hand-steps hi
+        step-slider/data: to percent! ((steps * 2) / 100)
+        sync-face/text: rejoin [(form hi) ":" (form (to integer! (step-slider/data * 100)))]
+        CON-STEPS: steps
+    ][
+        CON-STEPS: either (pct < 2) [1][to integer! (pct / 2)]
+        sync-face/text: rejoin [(form hi) ":" (form pct)]
+    ]
+    CON-CFG: con-hand-cfg hi
+    out: CON-STEPS
     out
 ]
 win: layout/flags [
@@ -269,6 +298,12 @@ win: layout/flags [
     size-custom: field 80
     busy-face: text 10 "0" font [color: 18.18.24 size: 1]
     return
+    text 40 "hand" font [color: 140.140.160 size: 9]
+    hand-dd: drop-down 100 data CON-HAND-NAMES
+    text 40 "steps" font [color: 140.140.160 size: 9]
+    step-slider: slider 120 data 8%
+    sync-face: text 10 "1:8" font [color: 18.18.24 size: 1]
+    return
     text 40 "style" font [color: 140.140.160 size: 9]
     style-dd: drop-down 150 data CON-STYLE-NAMES
     enh-btn: button 120 "enhance: on" [con-flip]
@@ -301,3 +336,5 @@ win: layout/flags [
 size-dd/selected: to integer! ((h // 7) + 1)
 ; Photography opens. Style is a choice, not a posture.
 style-dd/selected: 1
+; Turbo opens: the standing hand, and the slider agrees with it.
+hand-dd/selected: 1

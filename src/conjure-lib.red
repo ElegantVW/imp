@@ -155,7 +155,7 @@ con-style-entry: func [si [integer!] /local out][
     either (out = none) [out: pick CON-STYLES 1][]
     out
 ]
-con-style-name: func [si [integer!] /local out][
+con-get-style-name: func [si [integer!] /local out][
     out: pick (con-style-entry si) 1
     out
 ]
@@ -178,6 +178,47 @@ CON-STYLES: [
 ]
 CON-STYLE-NAMES: copy []
 foreach con-st CON-STYLES [append CON-STYLE-NAMES pick con-st 1]
+
+; ── the hands. name / steps / cfg each; the model FILE comes from
+; the launcher's env (sdxl=, pony=), because paths are the harness's
+; business, not the program's. turbo's file is the standing default.
+CON-HANDS: [
+    ["turbo" 4 1]
+    ["SDXL" 20 7]
+    ["Pony" 25 7]
+]
+CON-HAND: 1
+CON-HAND-NAME: "turbo"
+CON-HAND-NAMES: copy []
+foreach con-hd CON-HANDS [append CON-HAND-NAMES pick con-hd 1]
+con-hand-pick: func [hi [integer!] n [integer!] /local e out][
+    out: none
+    e: pick CON-HANDS hi
+    either (e = none) [out: none][out: pick e n]
+    out
+]
+con-get-hand-name: func [hi [integer!] /local out][
+    out: con-hand-pick hi 1
+    either (out = none) [out: "turbo"][]
+    out
+]
+con-hand-steps: func [hi [integer!] /local out][
+    out: con-hand-pick hi 2
+    either (out = none) [out: 4][]
+    out
+]
+con-hand-cfg: func [hi [integer!] /local out][
+    out: con-hand-pick hi 3
+    either (out = none) [out: 1][]
+    out
+]
+con-hand-file: func [hi [integer!] /local out][
+    out: ""
+    if (hi = 1) [out: CON-MODEL]
+    if (hi = 2) [out: con-get "sdxl" ""]
+    if (hi = 3) [out: con-get "pony" ""]
+    out
+]
 
 ; ── how long a silence may last. A spawn that never reports back is
 ; a dead pipeline, not a slow one; the window must say so instead of
@@ -363,7 +404,7 @@ con-hand-cmd: func [/local out][
     out: rejoin [
         "LD_LIBRARY_PATH=" con-quote CON-SD-LIB " "
         con-quote CON-SD " "
-        "-m " con-quote CON-MODEL " "
+        "-m " con-quote con-hand-file CON-HAND " "
         "-p " con-quote con-prompt " "
         "-W " to string! CON-W " -H " to string! CON-H " "
         "--steps " to string! CON-STEPS " "
@@ -514,7 +555,7 @@ con-forge-frame: func [/local out][
             append con-panel row rejoin ["style: " CON-STYLE-NAME] IMP-WIDTH MUTE
             append con-panel row rejoin ["enhance: " CON-ENH] IMP-WIDTH MUTE
             append con-panel row rejoin [
-                "hand:  sd-turbo " to string! CON-W "x" to string! CON-H
+                "hand:  " CON-HAND-NAME " " to string! CON-W "x" to string! CON-H
                 " " to string! CON-STEPS "sp cfg" to string! CON-CFG
             ] IMP-WIDTH MUTE
             append con-panel row "forged in red. no C, no python." IMP-WIDTH MUTE
@@ -638,7 +679,7 @@ con-advance: func [rc [integer!] /local out][
     out
 ]
 
-con-begin: func [wish sz si enh /local out trimmed n orders][
+con-begin: func [wish sz si enh hi /local out trimmed n orders][
     out: "fail: speak a wish first."
     trimmed: try [copy wish]
     either error? trimmed [
@@ -663,31 +704,47 @@ con-begin: func [wish sz si enh /local out trimmed n orders][
                 ]
                 CON-STYLE: si
                 either (enh = "off") [CON-ENH: "off"][CON-ENH: "on"]
-                CON-STYLE-NAME: con-style-name si
-                con-wish: trimmed
-                write CON-F-JOB con-wish
-                con-ledger: copy []
-                con-say "OPENED"
-                con-say rejoin ["wish " mold con-wish]
-                con-say rejoin ["style " mold CON-STYLE-NAME " enhance " mold CON-ENH]
-                either (CON-ENH = "off") [
-                    ; the mortal's own words, styled, straight to the hand.
-                    ; no mouth in this path at all.
-                    con-prompt: con-compose con-wish si
-                    write CON-F-PROMPT con-prompt
-                    con-say rejoin ["prompt " mold con-prompt]
-                    con-cmd: con-hand-cmd
-                    write CON-F-CMD con-cmd
-                    con-say "the hand is called"
-                    CON-PHASE: "hand"
-                    con-spawn con-cmd
-                    out: "the hand is painting..."
+                CON-STYLE-NAME: con-get-style-name si
+                either (hi = none) [hi: 1][
+                    either ((hi < 1) or (hi > length? CON-HANDS)) [hi: 1][]
+                ]
+                CON-HAND: hi
+                CON-HAND-NAME: con-get-hand-name hi
+                con-say rejoin ["hand " mold CON-HAND-NAME]
+                either ((length? con-hand-file hi) = 0) [
+                    con-say "no such hand installed."
+                    out: "fail: that hand is not installed."
                 ][
-                    orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " con-style-directive si]
-                    CON-PHASE: "mouth-art"
-                    con-say "the mouth is asked what to paint"
-                    con-ask-start orders con-wish 160
-                    out: "the mouth is writing the prompt..."
+                    either exists? to file! con-hand-file hi [
+                    con-wish: trimmed
+                    write CON-F-JOB con-wish
+                    con-ledger: copy []
+                    con-say "OPENED"
+                    con-say rejoin ["wish " mold con-wish]
+                    con-say rejoin ["style " mold CON-STYLE-NAME " enhance " mold CON-ENH]
+                    either (CON-ENH = "off") [
+                        ; the mortal's own words, styled, straight to the hand.
+                        ; no mouth in this path at all.
+                        con-prompt: con-compose con-wish si
+                        write CON-F-PROMPT con-prompt
+                        con-say rejoin ["prompt " mold con-prompt]
+                        con-cmd: con-hand-cmd
+                        write CON-F-CMD con-cmd
+                        con-say "the hand is called"
+                        CON-PHASE: "hand"
+                        con-spawn con-cmd
+                        out: "the hand is painting..."
+                    ][
+                        orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " con-style-directive si]
+                        CON-PHASE: "mouth-art"
+                        con-say "the mouth is asked what to paint"
+                        con-ask-start orders con-wish 160
+                        out: "the mouth is writing the prompt..."
+                    ]
+                    ][
+                        con-say "no such hand installed."
+                        out: "fail: that hand is not installed."
+                    ]
                 ]
             ]
         ]

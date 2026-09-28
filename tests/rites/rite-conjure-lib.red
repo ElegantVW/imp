@@ -47,6 +47,20 @@ say "   stripped: " [(rejoin [t1 " | " t2 " | " t3 " | " t4])]
 CON-T0: 0
 say "G timeout: " [either ((con-timed-out? 667) and (not (con-timed-out? 100))) ["SEALED"]["BROKEN"]]
 
+; ── each hand brings its own sampler contract ───────────────────────
+say "H hand-steps: " [either (((con-hand-steps 1) = 4) and ((con-hand-steps 2) = 20) and ((con-hand-steps 3) = 25)) ["SEALED"]["BROKEN"]]
+say "I hand-cfg: " [either (((con-hand-cfg 1) = 1) and ((con-hand-cfg 2) = 7) and ((con-hand-cfg 3) = 7)) ["SEALED"]["BROKEN"]]
+
+; ── con-begin names the style and hand synchronously, pre-spawn ─────
+; The spawn (curl, async) orphans harmlessly; the globals are the seal.
+begin-out: con-begin "a lighthouse" "256" 3 "on" 2
+say "J begin-names: " [either (((CON-STYLE-NAME) = "Mignola") and ((CON-HAND-NAME) = "SDXL")) ["SEALED"]["BROKEN"]]
+say "   names: " [(rejoin [CON-STYLE-NAME "/" CON-HAND-NAME " said: " begin-out])]
+
+; the lookups survive their own answers: no func shares a word with a
+; value global in any case (hazard 65). repeat calls must all hold.
+say "J2 name-repeat: " [either ((((con-get-style-name 3) = "Mignola") and ((con-get-style-name 1) = "Photography")) and (((con-get-hand-name 2) = "SDXL") and ((con-get-hand-name 1) = "turbo"))) ["SEALED"]["BROKEN"]]
+
 say "E single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/conjure-lib-tmp.txt rejoin led

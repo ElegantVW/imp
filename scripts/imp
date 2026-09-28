@@ -51,6 +51,11 @@ SD_H=512
 # weak" was wrong.
 SD_STEPS=4
 SD_CFG=1
+# the other hands. the TUI chooses between them; the paths live here
+# because paths are the harness's business. a missing file is not a
+# missing feature — the library says so out loud at press time.
+SD_SDXL="$HOME/.local/share/pixie/models/sdxl-base-1.0-Q8_0.gguf"
+SD_PONY="$HOME/.local/share/pixie/models/pony-v6-Q8_0.gguf"
 LLM=imp
 LLM_URL="http://127.0.0.1:8082/v1/chat/completions"
 
@@ -77,6 +82,8 @@ if [[ -z "$WISH" ]] && [[ -t 0 ]] && [[ -n "${DISPLAY:-}" ]]; then
 sd=$SD
 sd-lib=$SD_LIB
 model=$SD_MODEL
+sdxl=$SD_SDXL
+pony=$SD_PONY
 w=$SD_W
 h=$SD_H
 steps=$SD_STEPS
@@ -151,6 +158,8 @@ cat > "$SHM/imp-env.txt" <<ENV
 sd=$SD
 sd-lib=$SD_LIB
 model=$SD_MODEL
+sdxl=$SD_SDXL
+pony=$SD_PONY
 w=$SD_W
 h=$SD_H
 steps=$SD_STEPS

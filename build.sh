@@ -208,7 +208,7 @@ tui_conjure() {
     printf 'imp:   no DISPLAY; the window cannot be proved here.\n' >&2
     return 0
   fi
-  RITED_WAIT="${RITED_WAIT:-500}" \
+  RITED_WAIT="${RITED_WAIT:-1000}" \
     "$ROOT/rited" "$ROOT/tests/rites/rite-tui-conjure.red" \
     "$SHM/tui-conjure-witness.txt" >/dev/null || die "rite-tui-conjure gave no testimony"
   if grep -q 'BROKEN' "$SHM/tui-conjure-witness.txt"; then
