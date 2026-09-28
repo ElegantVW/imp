@@ -167,53 +167,70 @@ a 512 source means 6.4×6.4 source pixels per dot instead of 3.2×3.2, which
 is strictly more detail per cell and not more time.
 
 | 47 | **`does` does not work** | **Real, and it killed the TUI's last line.** `f: does [42]` raises, while `g: func [/local x] [x: 7  x]` works. The TUI was written `tui-layout: does [win]`, so it died on its final line — silently, with `try [do %src/tui.red]` reporting no error and `tui-layout` simply undefined. A function that is defined and does not exist is worse than one that is missing. |
-| 48 | **A wrapper that `do`es the program and then `view`s it shows nothing** | **Real, and it cost the better part of a session.** `win` is a perfectly good face — `type? :win` is `object!` — and `view win` after `do %src/tui.red` blocks, which reads exactly like a window that opened. It did not. The window is created and is in the screen's pane (`pane1=1`) and the event loop runs (`tick 8`) and still nothing is drawn. `show win`, `draw win`, `view/no-wait`, and `unview/only` on a dummy face all failed to change that. The one thing that does produce a draw is `unview/only face/parent` — the self-close — which is why rite-view works and a staying-open TUI does not. |
+| 48 | **A wrapper that `do`es the program and then `view`s it shows nothing** | **FALSE — withdrawn.** This was written to explain a window that was not there, and the window was there. `win` is a perfectly good face (`type? :win` is `object!`), `view win` after `do %src/tui.red` blocks, and the window opens and maps at 1890×1050. The "evidence" was enumerating X windows after `pkill -x red-view` and reading corpses. See the post-mortem below. A claim that a working window is broken, backed by a measurement taken after killing the process, is not a finding. |
 | 49 | **`now/hour` does not exist; the hour is `to integer! now/time / 3600`** | **Real, and it takes three attempts.** Measured: `now` → `28-Sep-2026/2:48:26+01:00`; `now/hour` → raises (no such refinement); `now/time/hour` → raises (`time!` has no `/hour` either); `to integer! now/time` → `10271` (seconds since midnight). `now` has `/year /month /day /time /zone /weekday /yearday /precise /utc` and no more. Anything else is a no-value that fails silently — the same trap as binding a system word, and twice as hard to see because the name looks right. |
 | 50 | **A script run directly must be staged in the repo root** | **Real, and it is why the TUI would not launch from src/.** `do` resolves a relative path against the CWD, and red-view sets the CWD to the script's own directory. So `red-view src/tui.red` puts the CWD in `src/`, and a file there doing `do %src/core.red` looks for `src/src/core.red` — which does not exist, and the failure is silent. The launcher must `cp` the script to the repo root and run it from there, exactly as `rited` does. |
 | 51 | **A wrapper needs a `Red [...]` header** | **Real.** A wrapper that began `W: %file` died on its first line with no output and no witness. The same wrapper with `Red [Title: "imp-tui" Needs: View]` at the top opened the window. Every working script in this repo has the header; a script without one is not a script. |
 | 52 | **A launch must come from a script that stays alive** | **Real.** Launched inline — even via `bash -c` — the shell exits and red-view dies with it, and no window ever appears. Launched from a bash script that polls, it lives as long as the window does. The launcher is a script and polls, so this is the one that matters; an interactive `imp` typed into a shell that then exits is the one that does not. |
 | 53 | **`xdotool search` returns phantom window IDs** | **Real, and it made a broken TUI look like a working one.** `xdotool search --name "."` kept returning `18874375` with the name `imp`, and `getwindowname` on it returned `imp`, and it looked like the window was there. `getwindowgeometry` on the same ID returns `BadWindow`. A window ID that resolves to a name but not to geometry is a corpse, and counting on it produced a long run of false positives. Verify a window by its geometry, never by its name. |
 | 54 | **A screenshot is the only proof a window painted** | **Real, and it is rite-view's whole argument.** There is no `import`, no `scrot`, no `xwd` on this box, so "did the window draw" was unanswerable until Red's own `to-image` + `save` was used to take one. rite-view's backdrop is deliberately garish red so that one pixel — `top-left px: 255.0.0.0` — settles it. A window that opens and never paints is indistinguishable from a working one until a human looks, and there is no human in a rite. |
+| 55 | **`layout compose/deep` + `on-key` is a syntax error** | **Real, and silent.** `vid-invalid-syntax`, and the window never opens. `compose/deep` alone works, `on-key` alone works, and a plain `layout` with both works — only the combination fails. `compose/deep` was there to splice a global `file!` into the image; a plain `layout` splices a global just as well, so nothing is lost. |
+| 56 | **VID takes a literal, not an expression** | **Real.** `text 200 (mold mode)` is `vid-invalid-syntax`, and so is `text 200 (mold mode) font [...]`. Bind the value to a word first, then use the word. Measured: error 384 on `[(mold mode) font [...]]`. |
+| 57 | **`mold` of a string gives a curly-brace string** | **Real, and it broke the mode cycler for a stretch.** `mold "normal"` is `{"normal"}`, not `"normal"`, and that is what lands in the face. A rite searching for `"normal"` never matches and reports the cycler BROKEN. `form` gives the plain string: `form "normal"` is `normal`. |
+| 58 | **`//` is modulo in Red, not division** | **Real.** `h // 12` gives 0–11, and `pick MODES 8` is `none` — pick is 1-based and MODES has 2 elements, so any index above 2 is none. Measured: mode-text was `none` at hour 8. Use `divide` (which returns decimal, so wrap with `to integer!`) and add 1 for the 1-based pick. |
+| 59 | **A synthetic event's key is a char; a real arrow key is a word** | **Real.** `event/key` for a synthetic event is read from the low 16 bits of `flags` as a char (event.reds), so `key: #"l"` arrives as `#"l"` and `key: 'left` arrives as `#"^@"`. A real arrow key is translated by the GTK backend into `_left`, `_right`, `_up`, `_down` (gtk3/events.reds, get-event-key). A switch on `left` matches neither, so the cycler did nothing. The actor must switch on both shapes. |
+| 60 | **`on-key` goes FIRST in the layout, not last** | **Real.** With `on-key` last, `win/actors` is `none` — the actor is never attached and the key does nothing. The reference TUI in red-view-src/tests/TUI/tui.red puts it first and references a face defined later in the same layout, and it works. An actor can reference a face defined later; the `unset-path` error came from `compose/deep`, not from the ordering. |
 
-## The TUI that would not map
+## The TUI that was never installed
 
 Not a hazard — a **post-mortem**, and the most expensive thing in this file
-after the sampler. The window is created, it is in the screen's pane, the
-event loop runs, and nothing is drawn. Measured, at tick 8:
+after the sampler. The window was never invisible. It was never *run*.
+
+`imp` on PATH was `~/bin/imp`, a 4808-byte copy of the launcher from before
+the TUI work. It had no `[[ -t 0 ]]` gate at all — bare `imp` went straight
+to `read -r -p '> ' WISH`, which is exactly what the user reported. The
+repo's `scripts/imp` was 8064 bytes with the gate, the TUI branch, and the
+sampler fix. Two files, and I tested the one the user did not run.
+
+The mechanism was `build.sh install`, which did `install -m 0755` — a copy.
+The TUI branch and the sampler fix were committed and pushed, and the copy
+was never refreshed, so `~/bin/imp` kept running 256px with sd-cli's wrong
+20-step/cfg-7.0 defaults for every invocation since. Nothing told the user to
+reinstall. Measured: `type -a imp` → `~/bin/imp`; `ls -la` → 4808 B, no
+gate; `scripts/imp` → 8064 B, gate present.
+
+Worse, I then spent a long stretch asserting "a staying-open window does not
+paint" and wrote that into this file and into a pushed commit message. That
+claim is **false**. The proof of invisibility was enumerating X windows
+*after* `pkill -x red-view` — reading dead window IDs, watching
+`getwindowname` still return `imp` on them, and calling them phantoms. The
+window was there the whole time:
 
 ```
-pane1=1            the window is in the pane
-tick 8             the event loop is alive
-screenshot        the user's own terminal, no red-view window
+33554439  REAL  Red Console  Geometry: 1890x1050   WM_STATE: Normal
 ```
 
-Everything that was tried, and did not work:
+A window ID that resolves to a name after its process is dead is a corpse.
+Counting on it produced a long run of false positives, and then a false
+negative when I killed the process and counted the corpses as proof of
+absence.
 
-| attempt | result |
+The fix is a symlink, not a copy: `~/bin/imp` → `~/imp/scripts/imp`. A
+symlink cannot drift, and `build.sh install` now makes the link and checks
+it resolves rather than copying a file that can be forgotten.
+
+Three self-inflicted probe bugs produced confident false negatives along the
+way, all in the harness rather than the program:
+
+| bug | symptom |
 |---|---|
-| `view win` (blocking) | window created, not drawn |
-| `show win` | no change |
-| `draw win` | no change |
-| `view/no-wait win` + `show win` + `do-events` | no change |
-| `unview/only` on a dummy face, then re-`view` | no change |
-| `unview/only face/parent` then re-`view` | no change |
-| rate facet on the image vs on a text face | both fire; neither draws |
+| `printf` emitted `pic: %%/dev/shm/...` — a doubled sigil | every layout "failed" |
+| window filter matched i3's own containers, not the client | "no window" on a live one |
+| enumerated windows after `pkill` | "phantom" IDs, then "invisible" |
 
-The one thing that does produce a draw is `unview/only face/parent` — the
-self-close — which is why rite-view works and a staying-open TUI does not.
-A window that is never closed is, in this build, a window that is never
-painted.
-
-The architecture that IS proven, and that the launcher uses: a single file
-staged in the repo root, with a `Red [...]` header, launched from a bash
-script that polls. That is rite-view, and it passes every seal. The TUI
-cannot use it, because a TUI must not self-close — and a TUI that does not
-self-close does not paint.
-
-This is recorded as a limitation, not a failure: the view module works, the
-window is created, the event loop runs. What is missing is a way to make a
-staying-open window draw, and that is a question for the view module, not
-for this project.
+The lesson is the one already in the harness law: a symptom that lands in a
+different place on every run is a harness bug until proven otherwise. Here it
+landed in three different places, and I believed the program every time.
 
 
 ## Not hazards — the manual corrected these as well

@@ -1,5 +1,57 @@
 # Imp changelog
 
+## v0.6.0 (2026-09-28) — the TUI, and the install that was never done
+
+Bare `imp` opens a window. That is the whole feature, and it took longer
+than it should have because the window was never the problem.
+
+**`~/bin/imp` was a stale copy.** `imp` on PATH was a 4808-byte launcher
+from before the TUI work — no `[[ -t 0 ]]` gate, no TUI branch, and the
+old 256px sampler with sd-cli's wrong 20-step/cfg-7.0 defaults. The repo's
+`scripts/imp` was 8064 bytes with all of it. `build.sh install` did
+`install -m 0755`, a copy, and the copy was never refreshed after the TUI
+was committed. So every `imp` the user ran went to the wish prompt, and
+the TUI was never once executed. It is now a symlink — `~/bin/imp` →
+`~/imp/scripts/imp` — and `build.sh install` makes the link and checks
+it resolves. A symlink cannot drift.
+
+**`src/tui.red` is a library.** It builds `win` and never views it,
+because a file that views itself is a file no rite can load. The
+launcher stages a three-line wrapper — `Red [...]` header, `do
+%src/tui.red`, `view win` — in the repo root. The rite loads the real
+file and asserts the window, the panel, the picture, and the cycler.
+
+**The evil opening posture.** The window does not remember anything and
+does not open the same way twice. Mode and resolution come from the hour
+by a rule that looks arbitrary, is deterministic, and is never explained
+in-product. `h: forge-div (to integer! now/time) 3600`, then
+`pick MODES (to integer! (divide h 12) + 1)`.
+
+**Six VID traps, all found by the rite, all in `docs/GRIMOIRE.md`:**
+
+| # | trap |
+|---|---|
+| 55 | `layout compose/deep` + `on-key` is `vid-invalid-syntax` — use a plain `layout` |
+| 56 | VID takes a literal, not an expression — `text 200 (mold mode)` is a syntax error |
+| 57 | `mold` of a string gives a curly-brace string — `{"normal"}`, not `"normal"`; use `form` |
+| 58 | `//` is modulo, not division — `pick MODES (h // 12)` is `none` for h≥2 |
+| 59 | a synthetic event's key is a char, a real arrow key is a word — switch on both |
+| 60 | `on-key` goes first in the layout — last, and `win/actors` is `none` |
+
+**The mode cycler is sealed.** `tests/rites/rite-tui.red`, wired into
+`./build.sh` as `imp: tui`:
+
+```
+A panel-present: "SEALED"   faces: 8
+B loop-live: "SEALED"
+C image-present: "SEALED"
+D mode-cycler: "SEALED"   mode before: "braille"
+E single-write: "SEALED - this file is the only product"
+```
+
+D is the one that was asked for. A left key flips `normal` to `braille`,
+and it is now a fact under an automated `send-event`, not a hope.
+
 ## v0.5.0 (2026-09-28) — the window opens, and it paints
 
 `imp` is going to grow a TUI. Before anything is built on it, the thing

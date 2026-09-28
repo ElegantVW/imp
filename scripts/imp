@@ -101,7 +101,26 @@ ENV
   #     even via `bash -c` — the shell exits and red-view dies with it.
   #     The launcher is a script and polls, so it lives as long as the
   #     window does.
-  cp -f "$TUI" "$STAGED_TUI"
+  # THE WRAPPER, not the program. src/tui.red is a LIBRARY: it builds `win`
+  # and never views it, because a file that views itself is a file no rite
+  # can load. Three things here are load-bearing and none is documented:
+  #
+  #   * THE WRAPPER NEEDS A `Red [...] NEEDS: View` HEADER. Without it the
+  #     script dies on its first line, silently, and no window ever opens.
+  #     Measured both ways.
+  #   * IT IS STAGED IN THE ROOT, because `do` resolves a relative path
+  #     against the CWD, and `%src/core.red` only means something when the
+  #     CWD is the root. A wrapper in src/ doing `%src/tui.red` looks for
+  #     src/src/tui.red.
+  #   * IT IS LAUNCHED FROM A SCRIPT THAT STAYS ALIVE. Launched inline —
+  #     even via `bash -c` — the shell exits and red-view dies with it.
+  #     The launcher is a script and polls, so it lives as long as the
+  #     window does.
+  cat > "$STAGED_TUI" <<'WRAP'
+Red [Title: "imp-tui" Needs: View]
+do %src/tui.red
+view win
+WRAP
   ( cd "$IMP" && setsid env DISPLAY="${DISPLAY:-:0}" "$RED" ".cast-tui.red" \
       >/dev/null 2>&1 & )
 

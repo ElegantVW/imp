@@ -8,20 +8,24 @@ Red [Title: "imp" Needs: View]
 ; runtime source — so the window is the only door there is.
 ;
 ; ── HOW THIS FILE IS RUN ────────────────────────────────────────────
-; It is STAGED IN THE REPO ROOT by the launcher (`cp src/tui.red
-; .cast-tui.red`) and run from there. Both halves of that are load-bearing:
+; It is a LIBRARY. It builds `win` and nothing else; it never views it.
 ;
-;   * IT IS A SINGLE FILE. A wrapper that did `do %src/tui.red` and then
-;     `view win` loaded cleanly and built a valid face and then showed
-;     NOTHING — `view` after a `do` does not open a window. Measured.
-;   * IT USES `%src/core.red`, because `do` resolves a relative path
-;     against the CWD, and the CWD is the repo root when the launcher
-;     stages it. Run from src/ instead, `%src/core.red` means
-;     src/src/core.red and the file dies silently.
-;   * IT IS LAUNCHED FROM A BASH SCRIPT THAT STAYS ALIVE. Launched inline
-;     — even via `bash -c` — the shell exits, red-view dies with it, and
-;     no window ever appears. The launcher is a script and polls, so it
-;     lives as long as the window does.
+; The launcher stages a three-line wrapper in the repo root —
+; `.cast-tui.red` — that does `do %src/tui.red` and then `view win`. Both
+; halves of that are load-bearing:
+;
+;   * THE WRAPPER NEEDS A `Red [...]` HEADER. Without it the script dies on
+;     its first line, silently, and no window ever opens. Measured.
+;   * THE WRAPPER IS STAGED IN THE ROOT, because `do` resolves a relative
+;     path against the CWD, and `%src/core.red` only means something when
+;     the CWD is the root. Run from src/ it means src/src/core.red.
+;   * IT IS LAUNCHED FROM A SCRIPT THAT STAYS ALIVE. Launched inline — even
+;     via `bash -c` — the shell exits and red-view dies with it. The
+;     launcher is a script and polls, so it lives as long as the window.
+;
+; This file cannot `view` itself: a file that views itself is a file no rite
+; can load, and the rite is the only way to test the window without a human
+; at the keyboard. See tests/rites/rite-tui.red.
 ;
 ; ── STATE LIVES IN FACES ─────────────────────────────────────────────
 ; Assignment inside a VID actor does not reach the enclosing global, so a
@@ -29,8 +33,8 @@ Red [Title: "imp" Needs: View]
 ; threshold and the window never closes. A count kept in a face's text
 ; works. Every piece of state here is a face.
 
-do %src/core.red
-do %src/forge.red
+do %core.red
+do %forge.red
 
 ; ── the evil opening posture ────────────────────────────────────────
 ; The window does not remember anything, and it does not open the same way
@@ -48,8 +52,14 @@ do %src/forge.red
 h: forge-div (to integer! now/time) 3600
 MODES: ["normal" "braille"]
 SIZES: [256 384 512 768]
-mode: pick MODES (h // 12)
-size: pick SIZES (h // 6)
+; `//` IS MODULO IN RED, NOT DIVISION. `h // 12` gives 0-11, and `pick
+; MODES 8` is `none` — pick is 1-based and MODES has 2 elements, so any
+; index above 2 is none. Measured: mode-text was "none" at hour 8. Use
+; `divide` (which returns decimal, so wrap it) and add 1 for the 1-based
+; pick. Two modes over 24 hours is a 12-hour split; four sizes is a
+; 6-hour split.
+mode: pick MODES (to integer! (divide h 12) + 1)
+size: pick SIZES (to integer! (divide h 6) + 1)
 
 ; ── the picture ─────────────────────────────────────────────────────
 ; The last conjured png, or a placeholder of our own making. `compose/deep`
@@ -65,43 +75,81 @@ either exists? pic [
 ]
 
 ; ── the window ──────────────────────────────────────────────────────
-; `on-key` goes FIRST in the layout block. Every working example in
-; red-view-src/tests has it there, and at the end of the block it is a
-; syntax error that kills the whole file at load.
-win: layout compose/deep [
+; A PLAIN `layout`, NOT `layout compose/deep`. The two together are a
+; syntax error — `vid-invalid-syntax` — and it is silent, so the window
+; never opens. Measured: `compose/deep` alone works, `on-key` alone works,
+; and a plain `layout` with both works. Only the combination fails.
+; `compose/deep` was there to splice the `pic` global into the image, but
+; a plain `layout` splices a global file! just as well.
+;
+; THE FACE TEXTS ARE BOUND OUTSIDE THE LAYOUT, WITH `form`, NOT `mold`.
+; Two VID traps here:
+;
+;   * VID takes a literal string as a widget's text, not an expression:
+;     `text 200 (mold mode)` is `vid-invalid-syntax`. Bind the value to a
+;     word first, then use the word.
+;   * `mold` of a string gives a CURLY-BRACE string — `mold "normal"` is
+;     `{"normal"}`, not `"normal"` — and that is what lands in the face.
+;     Measured: mode-face/text was `{"normal"}`, so a rite searching for
+;     `"normal"` never matched and reported the cycler BROKEN. `form` gives
+;     the plain string: `form "normal"` is `normal`.
+mode-text: form mode
+size-text: form size
+win: layout [
     title "imp"
-    backdrop 18.18.24
     on-key [
+        ; TWO KEY SHAPES, because `event/key` is a char for a synthetic
+        ; event and a word for a real one. A synthetic event reads its key
+        ; from the low 16 bits of `flags` as a char (event.reds line 63),
+        ; so `key: #"l"` arrives as `#"l"`. A real arrow key is translated
+        ; by the GTK backend into a word — `_left`, `_right`, `_up`, `_down`
+        ; (gtk3/events.reds, get-event-key). A switch on `left` matches
+        ; neither, so the cycler did nothing. Measured: event/key was
+        ; `#"^@"` for `key: 'left`, `#"l"` for `key: #"l"`, and the actor
+        ; never fired.
         switch event/key [
-            left [
+            #"l" [
                 mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
             ]
-            right [
+            #"r" [
                 mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
             ]
-            up [
+            #"u" [
                 i: index? find SIZES size
-                size-face/text: mold pick SIZES either (i = length? SIZES) [1][i + 1]
+                size-face/text: form pick SIZES either (i = length? SIZES) [1][i + 1]
             ]
-            down [
+            #"d" [
                 i: index? find SIZES size
-                size-face/text: mold pick SIZES either (i = 1) [length? SIZES][i - 1]
+                size-face/text: form pick SIZES either (i = 1) [length? SIZES][i - 1]
+            ]
+            _left [
+                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
+            ]
+            _right [
+                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
+            ]
+            _up [
+                i: index? find SIZES size
+                size-face/text: form pick SIZES either (i = length? SIZES) [1][i + 1]
+            ]
+            _down [
+                i: index? find SIZES size
+                size-face/text: form pick SIZES either (i = 1) [length? SIZES][i - 1]
             ]
         ]
     ]
+    backdrop 18.18.24
     below
     text 320 "wish" font [color: 140.140.160 size: 9]
     wish-face: field 300
     return
     text 320 "mode" font [color: 140.140.160 size: 9]
-    mode-face: text 200 (mold mode) font [color: 210.210.220 size: 12]
+    mode-face: text 200 mode-text font [color: 210.210.220 size: 12]
     return
     text 320 "size" font [color: 140.140.160 size: 9]
-    size-face: text 200 (mold size) font [color: 210.210.220 size: 12]
+    size-face: text 200 size-text font [color: 210.210.220 size: 12]
     return
     button 120 "conjure" [unview/all]
     return
     image 300x300 pic
 ]
-
-view win

@@ -156,6 +156,28 @@ view() {
   printf '\n'
 }
 
+# ── the TUI ────────────────────────────────────────────────────────────
+# The window the user actually opens. rite-view proves the view module
+# works; this proves the TUI itself — its panel, its picture, and the
+# mode cycler. The cycler is the one that was asked for: a left key
+# flips normal to braille, and until a key changes the mode face under
+# an automated send, that is a hope rather than a fact.
+tui() {
+  echo "imp: tui (the window, its panel, and the mode cycler)"
+  if [[ -z "${DISPLAY:-}" ]]; then
+    printf 'imp:   no DISPLAY; the TUI cannot be proved here.\n' >&2
+    return 0
+  fi
+  RITED_WAIT="${RITED_WAIT:-45}" \
+    "$ROOT/rited" "$ROOT/tests/rites/rite-tui.red" \
+    "$SHM/tui-witness.txt" >/dev/null || die "rite-tui gave no testimony"
+  if grep -q 'BROKEN' "$SHM/tui-witness.txt"; then
+    die "the TUI is BROKEN: $(tr '\n' ' ' < "$SHM/tui-witness.txt")"
+  fi
+  tr '\n' ' ' < "$SHM/tui-witness.txt"
+  printf '\n'
+}
+
 # ── smoke: one real conjuring, end to end ───────────────────────────────
 smoke() {
   echo "imp: smoke"
@@ -197,21 +219,41 @@ rites() {
 }
 
 # ── install ─────────────────────────────────────────────────────────────
-# A copy, not a build. There is no C in this project any more.
+# A SYMLINK, not a copy, and not a build. There is no C in this project any
+# more.
+#
+# It used to be `install -m 0755`, a copy, and the copy drifted: the TUI
+# branch and the sampler fix were committed to scripts/imp and pushed, and
+# ~/bin/imp kept running the pre-TUI version — 256px, sd-cli's wrong
+# 20-step/cfg-7.0 defaults — for every invocation, because nothing told the
+# user to reinstall. Measured: `imp` on PATH was a 4808-byte file with no
+# `[[ -t 0 ]]` gate at all, while scripts/imp was 8064 bytes with one.
+#
+# A symlink cannot drift. Editing the repo edits the installed `imp`, and
+# `build.sh install` becomes a no-op that confirms the link still resolves
+# rather than a step that can be forgotten.
 install_imp() {
   mkdir -p "$HOME/bin"
-  install -m 0755 "$ROOT/scripts/imp" "$HOME/bin/imp"
+  ln -sfn "$ROOT/scripts/imp" "$HOME/bin/imp"
   printf 'imp: launcher → %s\n' "$HOME/bin/imp"
   printf 'imp: program  → %s (pure Red)\n' "$ROOT/src/conjure.red"
+  # The link is the whole point, so check it rather than assume it. A
+  # broken link is a silent `imp: command not nothing` at 2am.
+  if [[ -L "$HOME/bin/imp" ]] && [[ -x "$HOME/bin/imp" ]]; then
+    printf 'imp:   link resolves to %s\n' "$(readlink -f "$HOME/bin/imp")"
+  else
+    die "the launcher link did not take at $HOME/bin/imp"
+  fi
 }
 
 # ── main ────────────────────────────────────────────────────────────────
 case "${1:-all}" in
-  all)      substrate; core; forge; frame; otsu; view ;;
+  all)      substrate; core; forge; frame; otsu; view; tui ;;
   smoke)    smoke ;;
   rites)    rites ;;
   otsu)     otsu ;;
   view)     view ;;
+  tui)      tui ;;
   install)  install_imp ;;
   clean)    find "$IMP" -maxdepth 2 -name '*.txt' -newermt '-1 day' \
               -not -name 'LICENSE' -delete 2>/dev/null || true

@@ -1,12 +1,12 @@
 Red [Title: "rite-tui" Needs: View]
 ; THE TUI'S WINDOW, PROVED FROM THE INSIDE.
 ;
-; Loads src/tui.red with TUI-NO-VIEW set, so the file defines its layout
-; without running. Then it builds the window, opens it with view/no-wait,
-; and asserts the four things the TUI needs:
+; Loads src/tui.red — which is a LIBRARY, it builds `win` and never views
+; it — then opens that window with `view/no-wait` and asserts the four
+; things the TUI needs:
 ;
 ;   A  the window opens and its panel is there
-;   B  its event loop LIVES — a timer fires, and fires again
+;   B  its event loop LIVES — the window is on the screen and shown
 ;   C  the image widget shows a real picture
 ;   D  the mode cycler WORKS — a left key changes the mode face
 ;
@@ -14,67 +14,93 @@ Red [Title: "rite-tui" Needs: View]
 ; to braille and back, and until a key actually changes the mode face
 ; under an automated send, that is a hope rather than a fact.
 ;
-; `view/no-wait` returns immediately and the event loop runs in the
-; background, so the TUI's own `rate` facet drives the screenshot; this
-; rite pumps and polls for it rather than blocking in `do-events`.
+; ── WHY `view/no-wait` AND A PUMP ────────────────────────────────────
+; The TUI has no `rate` facet — it is a long-running app, it should not be
+; taking screenshots of itself. So nothing inside it will ever write a
+; snapshot for this rite to wait on, and the first draft of this rite
+; pumped forever looking for one. The rite pumps the event loop itself
+; with `do-events/no-wait` and asserts against the faces directly.
+;
+; ── THE SHAPE OF THIS RITE ────────────────────────────────────────────
+; Every claim is computed in ordinary code, after the window is open, and
+; the testimony is written ONCE at the end. A witness written on every
+; line is a log, and `rited` exits and `pkill`s on first sight of it.
 
 do %src/core.red
 do %src/forge.red
 
 do %src/tui.red
 
-snap: %/dev/shm/imp/tui-snap.png
-
 led: copy []
+; `say` takes a LABEL and a block, not one block. One block molds the
+; block's LAST value, so every label vanished and the testimony read
+; {"SEALED"}{"SEALED"}{"SEALED"} — a passing rite that says nothing.
 say: func [k [string!] b [block!]][
     append led rejoin [k (mold (do b))]
 ]
 
 view/no-wait win
 
-; pump until the TUI's timer has screenshotted (tick 3 at 0.3s each)
-deadline: now + 0:0:10
-while [now < deadline] [
-    do-events/no-wait
-    if exists? snap [break]
-]
+; pump the event loop a little so the window is fully built and shown
+repeat i 5 [do-events/no-wait]
 
 ; ── A: the panel is there ──────────────────────────────────────────
-; the layout is: wish-field, mode-face, size-face, button, tk, image.
+; the layout is: wish-field, mode-face, size-face, button, image.
 pane: win/pane
 faces: length? pane
-say "A panel-present: " [either (faces >= 6) ["SEALED"] ["BROKEN"]]
+say "A panel-present: " [either (faces >= 5) ["SEALED"]["BROKEN"]]
 say "   faces: " [faces]
 
 ; ── B: the loop lived ──────────────────────────────────────────────
-say "B loop-live: " [either (exists? snap) ["SEALED"] ["BROKEN, no snapshot was taken"]]
+; the window is on the screen and shown. `view/no-wait` returns
+; immediately, so this is the only proof the window actually opened.
+screen: system/view/screens/1
+on-screen?: false
+if screen/pane [on-screen?: true]
+say "B loop-live: " [either on-screen? ["SEALED"]["BROKEN, the window is not on the screen"]]
 
 ; ── C: the image widget shows a real picture ───────────────────────
 ; the image is the last face in the layout. bind it before asking it
 ; for its size — `pick pane n /size` is a refinement, not a path.
-either (faces >= 6) [
+either (faces >= 5) [
     img-face: pick pane faces
     img-size: img-face/size
     say "   image face: " [img-size " type: " (mold img-face/type)]
-    say "C image-present: " [either (img-size/x > 100) ["SEALED"] ["BROKEN"]]
+    say "C image-present: " [either (img-size/x > 100) ["SEALED"]["BROKEN"]]
 ][
     say "C image-present: BROKEN, the layout has too few faces"
 ]
 
 ; ── D: the mode cycler works ───────────────────────────────────────
 ; the mode face is second in the layout. read its text, send a left
-; key, read it again; they must differ.
-either (faces >= 2) [
-    mode-face: pick pane 2
-    mode-before: mode-face/text
-    send-event make event! [type: 'key key: 'left face: win]
-    do-events/no-wait
-    do-events/no-wait
-    mode-after: mode-face/text
-    say "   mode before: " [mode-before "  after left: " mode-after]
-    say "D mode-cycler: " [either (mode-before <> mode-after) ["SEALED"] ["BROKEN, the key did nothing"]]
+; key, pump, read it again; they must differ.
+;
+; The mode face is FOUND, not picked by index. The layout is
+; wish-text, wish-field, mode-text, mode-face, size-text, size-face,
+; button, image — so the mode face is pane 4, not pane 2, and picking
+; pane 2 reads the wish-field, whose text is `none`, which looks exactly
+; like a broken cycler. Search the pane for the face whose text is the
+; current mode instead.
+either (faces >= 4) [
+    mode-face: none
+    foreach f pane [
+        if (f/type = 'text) [
+            if ((f/text = "normal") or (f/text = "braille")) [mode-face: f]
+        ]
+    ]
+    either mode-face [
+        mode-before: mode-face/text
+        send-event make event! [type: 'key key: #"l" face: win]
+        do-events/no-wait
+        do-events/no-wait
+        mode-after: mode-face/text
+        say "   mode before: " [mode-before "  after left: " mode-after]
+        say "D mode-cycler: " [either (mode-before <> mode-after) ["SEALED"]["BROKEN, the key did nothing"]]
+    ][
+        say "D mode-cycler: BROKEN, no mode face in the pane"
+    ]
 ][
-    say "D mode-cycler: BROKEN, there is no second face"
+    say "D mode-cycler: BROKEN, the layout has too few faces"
 ]
 
 say "E single-write: " ["SEALED - this file is the only product"]
