@@ -1,5 +1,37 @@
 # Imp changelog
 
+## v0.9.0 (2026-09-28) — braille leaves, sizes open up
+
+Braille is out, by request, and the size story is finished properly:
+presets you can click, a custom box you can type in, and the u/d keys
+still walking the presets for fingers that know them.
+
+**Mode says `normal`, and that is the whole list.** `MODES` is one
+word now; the l/r cycler went with braille. The face stays — the new
+styles will plug into exactly that spot when their design arrives.
+
+**Sizes: drop-down, custom field, keys.** Seven presets
+(128–1024) in a native `drop-down` — probed first, because assuming
+a widget exists in this 32-bit build is how you lose an evening. It
+builds, it holds seven items, `selected` sets and reads. Custom wins
+when it says anything, else the drop-down, else 512: what runs is
+always visible. A custom size that is not a number is refused before
+anything spawns (`that size is not a number.`, busy stays 0 — sealed,
+no GPU spent). Cycling presets clears the custom box, for the same
+reason: the visible state and the running state must never disagree.
+The opening preset still comes from the hour (`h // 7 + 1` — modulo
+is finally the tool, not the trap) and is never explained in-product.
+
+The full pipeline re-proved itself through the new path: two wishes,
+one window, picture 768×768 — the drop-down does not just display,
+it drives the hand.
+
+```
+D mode-single: "SEALED"   preset: "6 -> 7 custom="
+L presets: "SEALED"   presets: 7
+M custom-refused: "SEALED"   refused: "that size is not a number. busy=0"
+```
+
 ## v0.8.0 (2026-09-28) — the window learns manners, and a way out
 
 Two complaints, both fair: the window was absurdly wide and tall for

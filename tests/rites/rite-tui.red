@@ -71,36 +71,32 @@ either (faces >= 5) [
     say "C image-present: BROKEN, the layout has too few faces"
 ]
 
-; ── D: the mode cycler works ───────────────────────────────────────
-; the mode face is second in the layout. read its text, send a left
-; key, pump, read it again; they must differ.
-;
-; The mode face is FOUND, not picked by index. The layout is
-; wish-text, wish-field, mode-text, mode-face, size-text, size-face,
-; button, image — so the mode face is pane 4, not pane 2, and picking
-; pane 2 reads the wish-field, whose text is `none`, which looks exactly
-; like a broken cycler. Search the pane for the face whose text is the
-; current mode instead.
+; ── D: the mode is single, and the size cycler works ──────────────
+; Braille is out, so there is nothing to cycle between: the face says
+; normal. The u key still walks the seven presets in the drop-down.
 either (faces >= 4) [
-    mode-face: none
+    mode-f: none
     foreach f pane [
         if (f/type = 'text) [
-            if ((f/text = "normal") or (f/text = "braille")) [mode-face: f]
+            if ((f/text = "normal") or (f/text = "braille")) [mode-f: f]
         ]
     ]
-    either mode-face [
-        mode-before: mode-face/text
-        send-event make event! [type: 'key key: #"l" face: win]
-        do-events/no-wait
-        do-events/no-wait
-        mode-after: mode-face/text
-        say "   mode before: " [mode-before "  after left: " mode-after]
-        say "D mode-cycler: " [either (mode-before <> mode-after) ["SEALED"]["BROKEN, the key did nothing"]]
+    either mode-f [
+        say "   mode: " [mode-f/text]
+        say "D mode-single: " [either ((mode-f/text) = "normal") ["SEALED"]["BROKEN"]]
     ][
-        say "D mode-cycler: BROKEN, no mode face in the pane"
+        say "D mode-single: BROKEN, no mode face in the pane"
     ]
+    u0: size-dd/selected
+    send-event make event! [type: 'key key: #"u" face: win]
+    do-events/no-wait
+    do-events/no-wait
+    u1: size-dd/selected
+    say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
+    say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 ][
-    say "D mode-cycler: BROKEN, the layout has too few faces"
+    say "D mode-single: BROKEN, the layout has too few faces"
+    say "D size-cycler: BROKEN, the layout has too few faces"
 ]
 
 ; ── F: both buttons are there — conjure and quit, by their own words
@@ -137,6 +133,20 @@ do-events/no-wait
 k-screen: system/view/screens/1
 k-post: either (k-screen/pane = none) [0][length? k-screen/pane]
 say "K field-q-safe: " [either (k-post = k-pre) ["SEALED"]["BROKEN, a field q closed the window"]]
+
+; ── L: the drop-down holds seven presets ───────────────────────────
+say "L presets: " [either ((length? size-dd/data) = 7) ["SEALED"]["BROKEN"]]
+say "   presets: " [(length? size-dd/data)]
+
+; ── M: a custom size that is not a number is refused, fast ──────────
+; No spawn, no flame: validation fails before busy goes 1, so this
+; seal costs nothing and proves the guard, not the GPU.
+wish-face/text: "a lighthouse in a storm"
+size-custom/text: "abc"
+con-press
+say "M custom-refused: " [either (((status-face/text) = "that size is not a number.") and ((busy-face/text) = "0")) ["SEALED"]["BROKEN"]]
+say "   refused: " [(rejoin [status-face/text " busy=" busy-face/text])]
+size-custom/text: ""
 
 ; ── I: the quit button's click dispatch closes the window ─────────
 ; Synthetic clicks do not inject (hazard 61), so dispatch the actor

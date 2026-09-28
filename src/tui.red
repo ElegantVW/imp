@@ -59,16 +59,16 @@ do %conjure-lib.red
 ;   to integer! now/time -> 10271   (seconds since midnight)
 ; so the hour is the seconds divided by 3600.
 h: forge-div (to integer! now/time) 3600
-MODES: ["normal" "braille"]
-SIZES: [256 384 512 768]
-; `//` IS MODULO IN RED, NOT DIVISION. `h // 12` gives 0-11, and `pick
-; MODES 8` is `none` — pick is 1-based and MODES has 2 elements, so any
-; index above 2 is none. Measured: mode-text was "none" at hour 8. Use
-; `divide` (which returns decimal, so wrap it) and add 1 for the 1-based
-; pick. Two modes over 24 hours is a 12-hour split; four sizes is a
-; 6-hour split.
-mode: pick MODES (to integer! (divide h 12) + 1)
-size: pick SIZES (to integer! (divide h 6) + 1)
+; ── modes, plural, are a promise, not a fact. Braille is out; the new
+; styles arrive with their own design. Until then the face says normal
+; and the l/r cycler is gone with it.
+mode-text: "normal"
+; Seven presets, as STRINGS: the drop-down's data is text, and the u/d
+; keys move an index, never arithmetic on the values. `//` is modulo
+; (hazard 58) — and here that is finally the tool, not the trap: the
+; opening preset is `(h // 7) + 1`, deterministic, 1-based, always in
+; range, never explained in-product. Covenant §1.
+SIZES: ["128" "192" "256" "384" "512" "768" "1024"]
 
 ; ── the picture ─────────────────────────────────────────────────────
 ; The last conjured png, or a placeholder of our own making. `compose/deep`
@@ -108,8 +108,6 @@ either exists? pic [
 ;     Measured: mode-face/text was `{"normal"}`, so a rite searching for
 ;     `"normal"` never matched and reported the cycler BROKEN. `form` gives
 ;     the plain string: `form "normal"` is `normal`.
-mode-text: form mode
-size-text: form size
 ready-text: "type a wish and press conjure."
 idle-flame: " "
 ; ── the press. NAMED, so a rite can call the exact path a finger takes.
@@ -117,7 +115,7 @@ idle-flame: " "
 ; button's on-click in this build (measured: busy stayed "0" through
 ; send-event type 'click), so the rite calls this and the human clicks
 ; it — same words either way. Ends on `out`, never on a conditional.
-con-press: func [/local out][
+con-press: func [/local out sz-text n][
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -131,15 +129,40 @@ con-press: func [/local out][
                 status-face/text: "speak a wish first."
                 out: "speak a wish first."
             ][
-                busy-face/text: "1"
-                flame-face/text: pick CON-FLAMES 1
-                status-face/text: form (con-begin wish-face/text size-face/text)
-                out: status-face/text
-                either ((con-kind status-face/text) = "fail") [
-                    busy-face/text: "0"
-                    flame-face/text: idle-flame
-                    out: status-face/text
+                ; custom wins when it says anything; else the drop-down;
+                ; else the standing default. What runs is always visible.
+                sz-text: "512"
+                either (size-dd/text = none) [
                 ][
+                    sz-text: form size-dd/text
+                ]
+                either (size-custom/text = none) [
+                ][
+                    either ((length? size-custom/text) = 0) [
+                    ][
+                        sz-text: size-custom/text
+                    ]
+                ]
+                n: try [to integer! sz-text]
+                either error? n [
+                    status-face/text: "that size is not a number."
+                    out: "that size is not a number."
+                ][
+                    either (n <= 0) [
+                        status-face/text: "that size is not a number."
+                        out: "that size is not a number."
+                    ][
+                        busy-face/text: "1"
+                        flame-face/text: pick CON-FLAMES 1
+                        status-face/text: form (con-begin wish-face/text sz-text)
+                        out: status-face/text
+                        either ((con-kind status-face/text) = "fail") [
+                            busy-face/text: "0"
+                            flame-face/text: idle-flame
+                            out: status-face/text
+                        ][
+                        ]
+                    ]
                 ]
             ]
         ]
@@ -165,33 +188,29 @@ win: layout [
         ; `#"^@"` for `key: 'left`, `#"l"` for `key: #"l"`, and the actor
         ; never fired.
         switch event/key [
-            #"l" [
-                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
-            ]
-            #"r" [
-                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
-            ]
             #"u" [
-                i: index? find SIZES size
-                size-face/text: form pick SIZES either (i = length? SIZES) [1][i + 1]
+                i: size-dd/selected
+                if (i = none) [i: 1]
+                size-dd/selected: either (i = length? SIZES) [1][i + 1]
+                size-custom/text: ""
             ]
             #"d" [
-                i: index? find SIZES size
-                size-face/text: form pick SIZES either (i = 1) [length? SIZES][i - 1]
-            ]
-            _left [
-                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
-            ]
-            _right [
-                mode-face/text: either (mode-face/text = "normal") ["braille"]["normal"]
+                i: size-dd/selected
+                if (i = none) [i: 1]
+                size-dd/selected: either (i = 1) [length? SIZES][i - 1]
+                size-custom/text: ""
             ]
             _up [
-                i: index? find SIZES size
-                size-face/text: form pick SIZES either (i = length? SIZES) [1][i + 1]
+                i: size-dd/selected
+                if (i = none) [i: 1]
+                size-dd/selected: either (i = length? SIZES) [1][i + 1]
+                size-custom/text: ""
             ]
             _down [
-                i: index? find SIZES size
-                size-face/text: form pick SIZES either (i = 1) [length? SIZES][i - 1]
+                i: size-dd/selected
+                if (i = none) [i: 1]
+                size-dd/selected: either (i = 1) [length? SIZES][i - 1]
+                size-custom/text: ""
             ]
             #"q" [
                 con-quit
@@ -235,7 +254,8 @@ win: layout [
     text 40 "mode" font [color: 140.140.160 size: 9]
     mode-face: text 80 mode-text font [color: 210.210.220 size: 12]
     text 40 "size" font [color: 140.140.160 size: 9]
-    size-face: text 80 size-text font [color: 210.210.220 size: 12]
+    size-dd: drop-down 100 data SIZES
+    size-custom: field 80
     busy-face: text 10 "0" font [color: 18.18.24 size: 1]
     return
     status-face: text 300 ready-text font [color: 140.140.160 size: 9]
@@ -261,3 +281,6 @@ win: layout [
     return
     pic-face: image 300x300 pic
 ]
+; ── the opening preset. Ordinary code, after the layout: the faces
+; exist by now. Deterministic from the hour, unexplained in-product.
+size-dd/selected: to integer! ((h // 7) + 1)
