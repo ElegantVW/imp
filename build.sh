@@ -132,6 +132,30 @@ otsu() {
   printf '\n'
 }
 
+# ── the window ─────────────────────────────────────────────────────────
+# The TUI's foundation, and the only seal in this repo that needs a
+# DISPLAY. It asserts four things, and the third is the one that matters:
+# a window can open and never paint, and that is indistinguishable from
+# a working one until a human looks. There is no screenshot tool on this
+# box, so the rite takes its own with Red's `to-image` + `save` and reads
+# a pixel back — the backdrop is garish red precisely so "did it paint"
+# is answerable by looking at one number.
+view() {
+  echo "imp: window (view module, needs a DISPLAY — the TUI's foundation)"
+  if [[ -z "${DISPLAY:-}" ]]; then
+    printf 'imp:   no DISPLAY; the window cannot be proved here.\n' >&2
+    return 0
+  fi
+  RITED_WAIT="${RITED_WAIT:-45}" \
+    "$ROOT/rited" "$ROOT/tests/rites/rite-view.red" \
+    "$SHM/view-witness.txt" >/dev/null || die "rite-view gave no testimony"
+  if grep -q 'BROKEN' "$SHM/view-witness.txt"; then
+    die "the window is BROKEN: $(tr '\n' ' ' < "$SHM/view-witness.txt")"
+  fi
+  tr '\n' ' ' < "$SHM/view-witness.txt"
+  printf '\n'
+}
+
 # ── smoke: one real conjuring, end to end ───────────────────────────────
 smoke() {
   echo "imp: smoke"
@@ -183,10 +207,11 @@ install_imp() {
 
 # ── main ────────────────────────────────────────────────────────────────
 case "${1:-all}" in
-  all)      substrate; core; forge; frame; otsu ;;
+  all)      substrate; core; forge; frame; otsu; view ;;
   smoke)    smoke ;;
   rites)    rites ;;
   otsu)     otsu ;;
+  view)     view ;;
   install)  install_imp ;;
   clean)    find "$IMP" -maxdepth 2 -name '*.txt' -newermt '-1 day' \
               -not -name 'LICENSE' -delete 2>/dev/null || true

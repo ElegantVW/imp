@@ -1,5 +1,69 @@
 # Imp changelog
 
+## v0.5.0 (2026-09-28) — the window opens, and it paints
+
+`imp` is going to grow a TUI. Before anything is built on it, the thing
+it stands on has to be true on **our** binary, and it is now a seal.
+
+**Red cannot read a terminal, so the TUI had to be a window.** `stdin` and
+`termios` appear nowhere in the runtime source, and `view`'s `on-key`
+fires on window events only. There *is* a terminal backend — 20 files,
+`tty.reds`, `screen.reds`, a `widgets/` tree — and it is 82% stubbed:
+34 of 41 `OS-draw-*` routines are empty, `OS-draw-image` literally
+`return 0`, and its widget set has no image at all. Our binary links
+GTK-3, X11 and Wayland. So the window backend is the only option, which
+is fortunate, because it is also what was wanted.
+
+`tests/rites/rite-view.red` asserts four claims, wired into
+`./build.sh` as `imp: window`:
+
+```
+A window-opened: "SEALED"
+B loop-live: "SEALED"   ticks: 3
+   snapshot: 212x235   top-left px: 255.0.0.0
+C paints-backdrop: "SEALED"
+   faces: 2   image face: 192x192
+D image-face-sized: "SEALED"
+```
+
+**C is the one that matters.** A window can open and never paint, and
+that is indistinguishable from a working one until a human looks at it.
+This box has no screenshot tool — no `import`, no `scrot`, no `xwd` — so
+the rite takes its own with Red's `to-image` and `save`, and reads a
+pixel back. The backdrop is deliberately garash red so that "did it
+paint" is answerable from one number: `top-left px: 255.0.0.0`. The
+`image` widget loads a real PNG from disk and displays it, which is
+exactly what the `normal` mode needs.
+
+**Eleven ways this rite failed first, all of them mine, and the two
+general ones are worth more than the feature:**
+
+- **Assignment inside a VID actor does not reach the enclosing global.**
+  `n: n + 1` in an `on-time` block leaves the global at 0 forever, so a
+  counter written that way never reaches its threshold, the window never
+  closes, `view` blocks, and the rite times out looking like a hang. A
+  count kept in a **face** works. That is why the actor here is three
+  lines and every claim is computed afterwards, in ordinary code, from
+  the file the actor saved.
+- **The `rate` facet goes on the same line as its widget.** Wrapped onto
+  its own line with the face named, the actor silently never attached.
+  A dead facet and a slow one look identical.
+
+Plus: `read` raises on a binary file and wants `/binary`; `copy` copies a
+*value*, so the file-copy idiom is `write %dest read/binary %src`
+(byte-exact, 144675 in and out) and `copy-file`/`read-binary`/
+`write-binary` are all absent from the binary; `load %f /size` parses as
+`load /size %f` because a `/word` after a function is a refinement;
+`write` truncates, so one progress file shows only the last line and two
+runs looked like they had died at the first statement; and `ticks` and
+`size` are **system words**, so binding them silently does nothing — the
+same trap as `ASK` and `status`, and the reason this rite names every
+intermediate after something boring.
+
+Still true and re-verified: 12 byte-exact seals, the frame's width
+contract, the Otsu threshold, `sd-turbo 512x512 4sp cfg1`, pure Red, no
+C. The TUI itself is not written yet — this is the ground it stands on.
+
 ## v0.4.0 (2026-09-28) — the hand was never weak, the sampler was
 
 The north star asks for art that matches the wish. For a full session the
