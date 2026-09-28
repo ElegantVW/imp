@@ -1,5 +1,45 @@
 # Imp changelog
 
+## v0.10.0 (2026-09-28) — seven styles, an honest mouth, a deadline, a resizable window
+
+Four things at once, because the day demanded all four.
+
+**Styles.** A drop-down with seven: Photography, Pixel art, Mignola,
+3D animation, Hentai, Anime, Vintage anime. With enhance on (the
+default), the style rides into the mouth's orders and the sentence
+comes back already dressed. With enhance off, your words go out raw
+with the style as an SD suffix and the mouth is never consulted:
+
+```
+prompt: {a fox asleep in a field of white flowers, mike mignola style,
+heavy black shadows, woodcut ink, stark contrast}
+```
+
+That line is the file the hand actually ran, read back by the rite.
+The frame's Provenance says `style:` and `enhance:` too, because the
+frame must not claim what it cannot back. An `enhance: on/off`
+button flips the path; one-shot keeps photography + mouth, exactly
+as before.
+
+**The mouth thinks out loud, and now it does so alone.** Qwen3
+reasons in `<think>` tags, and a Citroen got painted from
+chain-of-thought — the log's `prompt` line caught it red-handed.
+Replies are stripped of every thinking pair before anything reads
+them; an emptied answer falls through to the honest fallbacks (plain
+prompt, silent dragon) instead of painting static.
+
+**A silence has a deadline.** The hung Citroen run polled a file
+that would never appear: sd-cli was gone, no rc written, flame
+burning forever. Now every spawn stamps the time, and after 666
+seconds of nothing the window says which voice fell silent — mouth,
+hand, or dragon — instead of burning on. The deadline itself is
+sealed pure (fresh repels 100, outlives 667).
+
+**The window resizes.** `layout/flags [resize]` — without it the
+backend marks the window fixed and i3 will only move it. Proven
+live: 470×483 → 600×700 on request. Resize shows backdrop, not more
+picture; the image stays 300×300.
+
 ## v0.9.0 (2026-09-28) — braille leaves, sizes open up
 
 Braille is out, by request, and the size story is finished properly:

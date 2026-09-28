@@ -35,6 +35,18 @@ say "D no-job-no-quit: " [either ((con-kind r) = "fail") ["SEALED"]["BROKEN, exp
 say "   ran: " [r]
 say "   phase: " [CON-PHASE]
 
+; ── the mouth thinks out loud; the hand must never hear it ─────────
+t1: con-think-strip "<think>hmm, a car</think>a lighthouse in a storm"
+t2: con-think-strip "all thinking <think>draft one</think> middle <think>draft two</think> end"
+t3: con-think-strip "<think>endless"
+t4: con-think-strip "a plain sentence"
+say "F think: " [either (((t1 = "a lighthouse in a storm") and (t2 = "all thinking  middle  end")) and ((t3 = "") and (t4 = "a plain sentence"))) ["SEALED"]["BROKEN"]]
+say "   stripped: " [(rejoin [t1 " | " t2 " | " t3 " | " t4])]
+
+; ── a silence has a deadline, and the deadline is pure ──────────────
+CON-T0: 0
+say "G timeout: " [either ((con-timed-out? 667) and (not (con-timed-out? 100))) ["SEALED"]["BROKEN"]]
+
 say "E single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/conjure-lib-tmp.txt rejoin led

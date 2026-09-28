@@ -137,6 +137,35 @@ con-mock: ""
 con-cmd: ""
 CON-PHASE: "idle"
 CON-PIC: none
+; the style the hand paints in, and whether the mouth gets a say.
+; one-shot defaults: photography, mouth on — exactly what the old
+; top-level pipeline did, so `imp "a wish"` cannot tell the move.
+CON-STYLE: 1
+CON-STYLE-NAME: "Photography"
+CON-ENH: "on"
+
+; ── the seven styles. each is name / mouth-directive / sd-suffix.
+; The mouth gets the directive folded into its orders; with enhance
+; off the mortal's own words go out with the suffix and nothing else.
+; Suffixes steer the LOOK (light, line, shade) — no exotic tokens,
+; which is also what sd-turbo obeys best.
+CON-STYLES: [
+    ["Photography" "a photograph, realistic light and natural colour" ", photorealistic, natural lighting, 35mm photograph, sharp focus"]
+    ["Pixel art" "retro pixel art, crisp pixels and a limited palette" ", pixel art, 16-bit, crisp pixels, limited palette"]
+    ["Mignola" "a mike mignola comic panel, heavy black shadows like woodcut ink" ", mike mignola style, heavy black shadows, woodcut ink, stark contrast"]
+    ["3D animation" "a 3d animated film still, soft volumetric light" ", 3d animated film still, soft volumetric light, stylized, high detail"]
+    ["Hentai" "an anime-style illustration, cel shaded with clean line art" ", anime style illustration, cel shaded, clean line art, vibrant colours"]
+    ["Anime" "an anime still, cel shaded with a detailed background" ", anime style, cel shaded, detailed background"]
+    ["Vintage anime" "a vintage 1980s japanese anime cel, film grain and all" ", vintage 1980s japanese anime cel, film grain, retro"]
+]
+CON-STYLE-NAMES: copy []
+foreach con-st CON-STYLES [append CON-STYLE-NAMES pick con-st 1]
+
+; ── how long a silence may last. A spawn that never reports back is
+; a dead pipeline, not a slow one; the window must say so instead of
+; burning forever. 666 seconds, per the numerology law.
+CON-TIMEOUT: 666
+CON-T0: 0
 
 ; tongues of fire. the count is the block's length, which is
 ; forge-div BEAST 111 — six — and is not written as a literal here.
@@ -229,10 +258,36 @@ con-parse-reply: func [/local doc out got reason][
                     con-say rejoin ["mouth-reply-empty " mold got]
                     out: ""
                 ][
-                    out: got
+                    out: con-think-strip got
                 ]
             ]
         ]
+    ]
+    out
+]
+
+; ── the mouth thinks out loud. Qwen reasons inside <think> tags and
+; the whole thinking used to go out as the diffusion prompt (measured:
+; a Citroen painted from chain-of-thought). Strip every pair; an
+; unclosed tag means the rest is thinking, so it all goes; trim the
+; stray spaces so an empty answer reads empty and the fallbacks fire.
+con-think-strip: func [s [string!] /local out a b tail][
+    out: copy s
+    while [(find out "<think>")][
+        a: find out "<think>"
+        b: find a "</think>"
+        either (b = none) [
+            out: copy/part out ((index? a) - 1)
+        ][
+            tail: copy skip b 8
+            out: rejoin [copy/part out ((index? a) - 1) tail]
+        ]
+    ]
+    while [(length? out) > 0][
+        either ((pick out 1) = #" ") [out: copy skip out 1][break]
+    ]
+    while [(length? out) > 0][
+        either ((pick out length? out) = #" ") [out: copy/part out subtract length? out 1][break]
     ]
     out
 ]
@@ -272,6 +327,20 @@ con-flatten: func [s [string!] /local out][
     either (length? out) > 300 [copy/part out 300][out]
 ]
 
+; ── the mortal's own prompt, styled. wish + suffix, flattened. pure:
+; no IO, no spawn, so a rite can seal it without a GPU.
+con-compose: func [wish [string!] si [integer!] /local entry suffix out][
+    out: copy wish
+    entry: pick CON-STYLES si
+    either (entry = none) [
+        entry: pick CON-STYLES 1
+    ][
+    ]
+    suffix: pick entry 3
+    out: con-flatten rejoin [wish suffix]
+    out
+]
+
 ; ── STEPS AND CFG ARE PASSED EXPLICITLY. sd-cli's defaults are wrong
 ; for this model. sd-turbo is DISTILLED and GUIDANCE-FREE: 4 steps,
 ; cfg 1.0. cfg 0 is unconditioned and the picture ignores the prompt.
@@ -298,6 +367,7 @@ con-hand-cmd: func [/local out][
 con-spawn: func [cmd [string!] /local pid out][
     out: 0
     call/wait/shell rejoin ["rm -f " to string! CON-F-RC]
+    CON-T0: to integer! now/time
     pid: try [call/shell rejoin ["(" cmd "); echo $? > " to string! CON-F-RC]]
     either error? pid [
         con-say rejoin ["spawn-failed " mold pid]
@@ -307,6 +377,12 @@ con-spawn: func [cmd [string!] /local pid out][
         con-say rejoin ["spawned pid " mold pid]
         out: pid
     ]
+    out
+]
+
+; pure, so a rite can seal it: fresh spawn repels 100, outlives 667.
+con-timed-out?: func [now [integer!] /local out][
+    out: (now - CON-T0) > CON-TIMEOUT
     out
 ]
 
@@ -418,6 +494,8 @@ con-forge-frame: func [/local out][
             ]
             append con-panel divider "Provenance" IMP-WIDTH
             append con-panel row rejoin ["mouth: " CON-LLM] IMP-WIDTH MUTE
+            append con-panel row rejoin ["style: " CON-STYLE-NAME] IMP-WIDTH MUTE
+            append con-panel row rejoin ["enhance: " CON-ENH] IMP-WIDTH MUTE
             append con-panel row rejoin [
                 "hand:  sd-turbo " to string! CON-W "x" to string! CON-H
                 " " to string! CON-STEPS "sp cfg" to string! CON-CFG
@@ -541,7 +619,7 @@ con-advance: func [rc [integer!] /local out][
     out
 ]
 
-con-begin: func [wish sz /local out trimmed n][
+con-begin: func [wish sz si enh /local out trimmed n entry orders][
     out: "fail: speak a wish first."
     trimmed: try [copy wish]
     either error? trimmed [
@@ -561,22 +639,45 @@ con-begin: func [wish sz /local out trimmed n][
                     CON-W: n
                     CON-H: n
                 ]
+                either (si = none) [si: 1][
+                    either ((si < 1) or (si > length? CON-STYLES)) [si: 1][]
+                ]
+                CON-STYLE: si
+                either (enh = "off") [CON-ENH: "off"][CON-ENH: "on"]
+                entry: pick CON-STYLES si
+                CON-STYLE-NAME: pick entry 1
                 con-wish: trimmed
                 write CON-F-JOB con-wish
                 con-ledger: copy []
                 con-say "OPENED"
                 con-say rejoin ["wish " mold con-wish]
-                CON-PHASE: "mouth-art"
-                con-say "the mouth is asked what to paint"
-                con-ask-start CON-LLM-SYS-ART con-wish 160
-                out: "the mouth is writing the prompt..."
+                con-say rejoin ["style " mold CON-STYLE-NAME " enhance " mold CON-ENH]
+                either (CON-ENH = "off") [
+                    ; the mortal's own words, styled, straight to the hand.
+                    ; no mouth in this path at all.
+                    con-prompt: con-compose con-wish si
+                    write CON-F-PROMPT con-prompt
+                    con-say rejoin ["prompt " mold con-prompt]
+                    con-cmd: con-hand-cmd
+                    write CON-F-CMD con-cmd
+                    con-say "the hand is called"
+                    CON-PHASE: "hand"
+                    con-spawn con-cmd
+                    out: "the hand is painting..."
+                ][
+                    orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " pick entry 2]
+                    CON-PHASE: "mouth-art"
+                    con-say "the mouth is asked what to paint"
+                    con-ask-start orders con-wish 160
+                    out: "the mouth is writing the prompt..."
+                ]
             ]
         ]
     ]
     out
 ]
 
-con-tick: func [/local out rc][
+con-tick: func [/local out rc dt][
     out: "idle"
     either (CON-PHASE = "idle") [
         out: "idle"
@@ -586,7 +687,18 @@ con-tick: func [/local out rc][
             call/wait/shell rejoin ["rm -f " to string! CON-F-RC]
             out: con-advance rc
         ][
-            out: con-busy-msg
+            ; a spawn that never reports is dead, not slow. say which
+            ; voice fell silent, go idle, let the window show the fail.
+            dt: to integer! now/time
+            either (con-timed-out? dt) [
+                con-say rejoin ["timeout phase=" CON-PHASE]
+                CON-PHASE: "idle"
+                out: "fail: the hand fell silent."
+                if (con-busy-msg = "the mouth is writing the prompt...") [out: "fail: the mouth fell silent."]
+                if (con-busy-msg = "the dragon is watching...") [out: "fail: the dragon fell silent."]
+            ][
+                out: con-busy-msg
+            ]
         ]
     ]
     out

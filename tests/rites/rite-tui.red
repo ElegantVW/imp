@@ -99,18 +99,20 @@ either (faces >= 4) [
     say "D size-cycler: BROKEN, the layout has too few faces"
 ]
 
-; ── F: both buttons are there — conjure and quit, by their own words
+; ── F: the three buttons are there — conjure, quit, enhance ───────
 n-btn: 0
 conjure?: false
 quit?: false
+enh?: false
 foreach f pane [
     if (f/type = 'button) [
         n-btn: n-btn + 1
         if ((f/text) = "conjure") [conjure?: true]
         if ((f/text) = "quit") [quit?: true]
+        if ((find f/text "enhance") <> none) [enh?: true]
     ]
 ]
-say "F buttons: " [either ((n-btn = 2) and conjure? and quit?) ["SEALED"]["BROKEN"]]
+say "F buttons: " [either (((n-btn = 3) and conjure? and quit?) and enh?) ["SEALED"]["BROKEN"]]
 say "   buttons: " [n-btn]
 
 ; ── G: the image is LAST, because the old rite picks the last face ─
@@ -147,6 +149,23 @@ con-press
 say "M custom-refused: " [either (((status-face/text) = "that size is not a number.") and ((busy-face/text) = "0")) ["SEALED"]["BROKEN"]]
 say "   refused: " [(rejoin [status-face/text " busy=" busy-face/text])]
 size-custom/text: ""
+
+; ── N: the style drop-down holds seven styles ───────────────────────
+say "N styles: " [either ((length? style-dd/data) = 7) ["SEALED"]["BROKEN"]]
+say "   styles: " [(length? style-dd/data) "  open: " style-dd/text]
+
+; ── O: enhance flips off and back, through its own words ────────────
+con-flip
+mid-enh: enh-btn/text
+con-flip
+say "O enhance-flip: " [either (((mid-enh) = "enhance: off") and ((enh-btn/text) = "enhance: on")) ["SEALED"]["BROKEN"]]
+say "   flipped: " [(rejoin [mid-enh " -> " enh-btn/text])]
+
+; ── P: the mortal's prompt carries the style suffix ─────────────────
+; Pure compose, no spawn: Mignola on a fox.
+c1: con-compose "a fox" 3
+say "P compose: " [either ((((find c1 "mignola") <> none) and ((find c1 "a fox") <> none)) and ((find c1 "<think>") = none)) ["SEALED"]["BROKEN"]]
+say "   composed: " [c1]
 
 ; ── I: the quit button's click dispatch closes the window ─────────
 ; Synthetic clicks do not inject (hazard 61), so dispatch the actor

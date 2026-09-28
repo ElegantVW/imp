@@ -91,11 +91,15 @@ either exists? pic [
 ; `compose/deep` was there to splice the `pic` global into the image, but
 ; a plain `layout` splices a global file! just as well.
 ;
-; THE CONTROLS SHARE ROWS (`across`), three of them, so the window is
-; short: wish + both buttons, mode + size, status + flame. The picture
-; keeps its 300x300. `busy-face` is a 10px face in the mode row, text
-; the colour of the backdrop — state has to live in a face, and it does
-; not have to be seen.
+; THE CONTROLS SHARE ROWS (`across`), four of them, so the window is
+; short: wish + both buttons, mode + size, style + enhance, status +
+; flame. The picture keeps its 300x300. `busy-face` is a 10px face in
+; the size row, text the colour of the backdrop — state has to live in
+; a face, and it does not have to be seen.
+;
+; THE WINDOW IS RESIZABLE (`layout/flags [resize]`). Without the flag
+; the backend marks it fixed and i3 will only ever move it. Resize
+; shows backdrop, not more picture — the image stays 300x300.
 ;
 ; THE FACE TEXTS ARE BOUND OUTSIDE THE LAYOUT, WITH `form`, NOT `mold`.
 ; Two VID traps here:
@@ -115,7 +119,7 @@ idle-flame: " "
 ; button's on-click in this build (measured: busy stayed "0" through
 ; send-event type 'click), so the rite calls this and the human clicks
 ; it — same words either way. Ends on `out`, never on a conditional.
-con-press: func [/local out sz-text n][
+con-press: func [/local out sz-text n enh][
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -154,7 +158,8 @@ con-press: func [/local out sz-text n][
                     ][
                         busy-face/text: "1"
                         flame-face/text: pick CON-FLAMES 1
-                        status-face/text: form (con-begin wish-face/text sz-text)
+                        enh: either ((enh-btn/text) = "enhance: off") ["off"]["on"]
+                        status-face/text: form (con-begin wish-face/text sz-text style-dd/selected enh)
                         out: status-face/text
                         either ((con-kind status-face/text) = "fail") [
                             busy-face/text: "0"
@@ -175,7 +180,19 @@ con-quit: func [/local out][
     out: "closed"
     out
 ]
-win: layout [
+; ── the enhance switch. One face: the button text IS the state.
+con-flip: func [/local out][
+    out: "enhance: on"
+    either ((enh-btn/text) = "enhance: off") [
+        enh-btn/text: "enhance: on"
+        out: "enhance: on"
+    ][
+        enh-btn/text: "enhance: off"
+        out: "enhance: off"
+    ]
+    out
+]
+win: layout/flags [
     title "imp"
     on-key [
         ; TWO KEY SHAPES, because `event/key` is a char for a synthetic
@@ -258,6 +275,10 @@ win: layout [
     size-custom: field 80
     busy-face: text 10 "0" font [color: 18.18.24 size: 1]
     return
+    text 40 "style" font [color: 140.140.160 size: 9]
+    style-dd: drop-down 150 data CON-STYLE-NAMES
+    enh-btn: button 120 "enhance: on" [con-flip]
+    return
     status-face: text 300 ready-text font [color: 140.140.160 size: 9]
     flame-face: text 110 idle-flame font [color: 220.90.40 size: 14] rate 0:0:0.06 on-time [
         either (busy-face/text = "1") [
@@ -280,7 +301,9 @@ win: layout [
     ]
     return
     pic-face: image 300x300 pic
-]
+] [resize]
 ; ── the opening preset. Ordinary code, after the layout: the faces
 ; exist by now. Deterministic from the hour, unexplained in-product.
 size-dd/selected: to integer! ((h // 7) + 1)
+; Photography opens. Style is a choice, not a posture.
+style-dd/selected: 1

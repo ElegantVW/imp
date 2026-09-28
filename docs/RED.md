@@ -2059,7 +2059,24 @@ faces. `mold "normal"` is `{"normal"}`, and that is what lands in the
 face. A rite searching for `"normal"` never matches. `form "normal"` is
 `normal`. **Use `form` for face text.**
 
-### 26.6 The six VID traps, as one table
+### 26.6 Windows are fixed-size unless asked **[V]**
+
+Without the flag the GTK backend marks the window unresizable and a
+window manager will only ever move it. Resizing is a `layout`
+refinement, not a VID word inside the block:
+
+```
+win: layout/flags [
+    title "imp"
+    text 200 "hello"
+] [resize]
+```
+
+`platform.red` maps the word to `FACET_FLAGS_RESIZE`
+(`gui.reds`: `gtk_window_set_resizable`). Resize shows backdrop, not
+reflow — faces keep their sizes.
+
+### 26.7 The VID traps, as one table
 
 | # | trap | rule |
 |---|---|---|
@@ -2069,3 +2086,4 @@ face. A rite searching for `"normal"` never matches. `form "normal"` is
 | 58 | `//` is modulo | `pick MODES (h // 12)` is `none` for h≥2 — use `divide` + 1 |
 | 59 | synthetic key = char | `key: #"l"` → `#"l"`; real arrow = `_left` — switch on both |
 | 60 | `on-key` goes first | last → `win/actors` is `none` |
+| — | fixed window | `layout/flags [...] [resize]`, or the WM can only move it |
