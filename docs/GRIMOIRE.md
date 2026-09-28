@@ -166,6 +166,55 @@ costs the same either way, because the braille samples a fixed 80×48 grid:
 a 512 source means 6.4×6.4 source pixels per dot instead of 3.2×3.2, which
 is strictly more detail per cell and not more time.
 
+| 47 | **`does` does not work** | **Real, and it killed the TUI's last line.** `f: does [42]` raises, while `g: func [/local x] [x: 7  x]` works. The TUI was written `tui-layout: does [win]`, so it died on its final line — silently, with `try [do %src/tui.red]` reporting no error and `tui-layout` simply undefined. A function that is defined and does not exist is worse than one that is missing. |
+| 48 | **A wrapper that `do`es the program and then `view`s it shows nothing** | **Real, and it cost the better part of a session.** `win` is a perfectly good face — `type? :win` is `object!` — and `view win` after `do %src/tui.red` blocks, which reads exactly like a window that opened. It did not. The window is created and is in the screen's pane (`pane1=1`) and the event loop runs (`tick 8`) and still nothing is drawn. `show win`, `draw win`, `view/no-wait`, and `unview/only` on a dummy face all failed to change that. The one thing that does produce a draw is `unview/only face/parent` — the self-close — which is why rite-view works and a staying-open TUI does not. |
+| 49 | **`now/hour` does not exist; the hour is `to integer! now/time / 3600`** | **Real, and it takes three attempts.** Measured: `now` → `28-Sep-2026/2:48:26+01:00`; `now/hour` → raises (no such refinement); `now/time/hour` → raises (`time!` has no `/hour` either); `to integer! now/time` → `10271` (seconds since midnight). `now` has `/year /month /day /time /zone /weekday /yearday /precise /utc` and no more. Anything else is a no-value that fails silently — the same trap as binding a system word, and twice as hard to see because the name looks right. |
+| 50 | **A script run directly must be staged in the repo root** | **Real, and it is why the TUI would not launch from src/.** `do` resolves a relative path against the CWD, and red-view sets the CWD to the script's own directory. So `red-view src/tui.red` puts the CWD in `src/`, and a file there doing `do %src/core.red` looks for `src/src/core.red` — which does not exist, and the failure is silent. The launcher must `cp` the script to the repo root and run it from there, exactly as `rited` does. |
+| 51 | **A wrapper needs a `Red [...]` header** | **Real.** A wrapper that began `W: %file` died on its first line with no output and no witness. The same wrapper with `Red [Title: "imp-tui" Needs: View]` at the top opened the window. Every working script in this repo has the header; a script without one is not a script. |
+| 52 | **A launch must come from a script that stays alive** | **Real.** Launched inline — even via `bash -c` — the shell exits and red-view dies with it, and no window ever appears. Launched from a bash script that polls, it lives as long as the window does. The launcher is a script and polls, so this is the one that matters; an interactive `imp` typed into a shell that then exits is the one that does not. |
+| 53 | **`xdotool search` returns phantom window IDs** | **Real, and it made a broken TUI look like a working one.** `xdotool search --name "."` kept returning `18874375` with the name `imp`, and `getwindowname` on it returned `imp`, and it looked like the window was there. `getwindowgeometry` on the same ID returns `BadWindow`. A window ID that resolves to a name but not to geometry is a corpse, and counting on it produced a long run of false positives. Verify a window by its geometry, never by its name. |
+| 54 | **A screenshot is the only proof a window painted** | **Real, and it is rite-view's whole argument.** There is no `import`, no `scrot`, no `xwd` on this box, so "did the window draw" was unanswerable until Red's own `to-image` + `save` was used to take one. rite-view's backdrop is deliberately garish red so that one pixel — `top-left px: 255.0.0.0` — settles it. A window that opens and never paints is indistinguishable from a working one until a human looks, and there is no human in a rite. |
+
+## The TUI that would not map
+
+Not a hazard — a **post-mortem**, and the most expensive thing in this file
+after the sampler. The window is created, it is in the screen's pane, the
+event loop runs, and nothing is drawn. Measured, at tick 8:
+
+```
+pane1=1            the window is in the pane
+tick 8             the event loop is alive
+screenshot        the user's own terminal, no red-view window
+```
+
+Everything that was tried, and did not work:
+
+| attempt | result |
+|---|---|
+| `view win` (blocking) | window created, not drawn |
+| `show win` | no change |
+| `draw win` | no change |
+| `view/no-wait win` + `show win` + `do-events` | no change |
+| `unview/only` on a dummy face, then re-`view` | no change |
+| `unview/only face/parent` then re-`view` | no change |
+| rate facet on the image vs on a text face | both fire; neither draws |
+
+The one thing that does produce a draw is `unview/only face/parent` — the
+self-close — which is why rite-view works and a staying-open TUI does not.
+A window that is never closed is, in this build, a window that is never
+painted.
+
+The architecture that IS proven, and that the launcher uses: a single file
+staged in the repo root, with a `Red [...]` header, launched from a bash
+script that polls. That is rite-view, and it passes every seal. The TUI
+cannot use it, because a TUI must not self-close — and a TUI that does not
+self-close does not paint.
+
+This is recorded as a limitation, not a failure: the view module works, the
+window is created, the event loop runs. What is missing is a way to make a
+staying-open window draw, and that is a question for the view module, not
+for this project.
+
 
 ## Not hazards — the manual corrected these as well
 

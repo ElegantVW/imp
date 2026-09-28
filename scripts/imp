@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # imp — the whole thing, which is a Red program.
 #
-#   imp                     one conjuring from the typed wish
+#   imp                     opens the window (the TUI)
 #   imp "a lighthouse"      one conjuring from the argument
+#   imp < no tty            prompts for a wish, then one conjuring
 #
 # The PROGRAM is pure Red: src/conjure.red composes the request, calls
-# sd-cli through `call/wait/shell`, decodes the png with Red's own
-# codec, forges the glyphs, and publishes the frame. Not one line of the
-# art path is C or Python, and the C bridge is gone.
+# sd-cli through `call/wait/shell`, decodes the png with Red's own codec,
+# forges the glyphs, and publishes the frame. Not one line of the art path
+# is C or Python, and the C bridge is gone.
 #
 # This file is the harness, not the program, and it is bash for the same
 # reason rited is: the Red Console is a GUI, it gives you no stdout and
@@ -15,13 +16,19 @@
 # only thing done here that could be done in Red is WAITING, and Red has
 # no `sleep`. That is the whole remaining C-shaped hole, and it is a
 # launcher, not a dependency.
+#
+# Red cannot read a terminal — `stdin` and `termios` appear nowhere in the
+# runtime source — so the window is the only door there is. That is not a
+# compromise; it is the architecture.
 set -uo pipefail
 
 IMP="$HOME/imp"
 RED="$IMP/red-view"
 SHM="/dev/shm/imp"
 SRC="$IMP/src/conjure.red"
+TUI="$IMP/src/tui.red"
 STAGED="$IMP/.cast-conjure.red"
+STAGED_TUI="$IMP/.cast-tui.red"
 
 SD="$HOME/.local/lib/sd/sd-cli"
 SD_LIB="$HOME/.local/lib/sd"
@@ -37,13 +44,78 @@ SD_MODEL="$HOME/.local/share/pixie/models/sd_turbo-f16.gguf"
 # not survive the corrected sampler.
 SD_W=512
 SD_H=512
+# the sampler's own contract with sd-turbo. not tunables: these are the
+# values the model was distilled for, and sd-cli's defaults are a
+# different model's defaults. see the note at the call site in
+# conjure.red, because until that fix the whole diagnosis of "sd-turbo is
+# weak" was wrong.
+SD_STEPS=4
+SD_CFG=1
 LLM=imp
 LLM_URL="http://127.0.0.1:8082/v1/chat/completions"
 
 die() { printf 'imp: %s\n' "$1" >&2; exit 1; }
 
-# ── the wish ────────────────────────────────────────────────────────
+# ── the door ────────────────────────────────────────────────────────
+# bare imp, on a tty, with a display: the window. Red has no stdin, so
+# there is no other way in.
 WISH="${*:-}"
+if [[ -z "$WISH" ]] && [[ -t 0 ]] && [[ -n "${DISPLAY:-}" ]]; then
+
+  # the covenant, checked before anything runs — loopback only, and the
+  # hand never listens at all: sd-cli is one-shot.
+  case "$SD_MODEL" in /*) ;; *) die "the model path is not absolute" ;; esac
+  [[ -x "$SD"  ]] || die "no hand at $SD (sd-cli)"
+  [[ -f "$SD_MODEL" ]] || die "no weights at $SD_MODEL"
+
+  mkdir -p "$SHM"
+  # The mind is TOLD, it does not go and look. Red has no `getenv` —
+  # measured: `mold :getenv` is `unset` — and calling a missing function
+  # at the top level kills the rite before it can testify at all. So the
+  # launcher writes down what it knows and the program reads it off disk.
+  cat > "$SHM/imp-env.txt" <<ENV
+sd=$SD
+sd-lib=$SD_LIB
+model=$SD_MODEL
+w=$SD_W
+h=$SD_H
+steps=$SD_STEPS
+cfg=$SD_CFG
+llm=$LLM
+llm-url=$LLM_URL
+ENV
+
+  # One console instance, and it must be dead before this one starts.
+  pkill -x red-view 2>/dev/null
+  sleep 0.3
+  # THE TUI IS STAGED IN THE REPO ROOT AND RUN FROM THERE. Three things
+  # here are load-bearing and none is documented:
+  #
+  #   * IT IS A SINGLE FILE. A wrapper that did `do %src/tui.red` and then
+  #     `view win` loaded cleanly, built a valid face, and then showed
+  #     NOTHING — `view` after a `do` does not open a window. Measured.
+  #   * IT IS STAGED IN THE ROOT, because `do` resolves a relative path
+  #     against the CWD, and `%src/core.red` only means something when the
+  #     CWD is the root. Run from src/ it means src/src/core.red.
+  #   * IT IS LAUNCHED FROM A SCRIPT THAT STAYS ALIVE. Launched inline —
+  #     even via `bash -c` — the shell exits and red-view dies with it.
+  #     The launcher is a script and polls, so it lives as long as the
+  #     window does.
+  cp -f "$TUI" "$STAGED_TUI"
+  ( cd "$IMP" && setsid env DISPLAY="${DISPLAY:-:0}" "$RED" ".cast-tui.red" \
+      >/dev/null 2>&1 & )
+
+  # The window is the product. Wait for it to close; there is no frame to
+  # wait for and no log to read. The process going away is the only
+  # signal, and it is the right one: the user closed the window.
+  while pgrep -x red-view >/dev/null 2>&1; do
+    sleep 0.5
+  done
+  rm -f "$STAGED_TUI"
+  exit 0
+fi
+
+# ── the wish ────────────────────────────────────────────────────────
 if [[ -z "$WISH" ]]; then
   printf '\033[38;5;175m⛓ imp\033[0m  what do you wish for? \033[38;5;60m^C to leave.\033[0m\n' >&2
   read -r -p '> ' WISH || die "the wish was never spoken."
@@ -51,23 +123,19 @@ if [[ -z "$WISH" ]]; then
 fi
 
 # ── the covenant, checked before anything runs ──────────────────────
-# loopback only, and the hand never listens at all: sd-cli is one-shot.
 case "$SD_MODEL" in /*) ;; *) die "the model path is not absolute" ;; esac
 [[ -x "$SD"  ]] || die "no hand at $SD (sd-cli)"
 [[ -f "$SD_MODEL" ]] || die "no weights at $SD_MODEL"
 
 mkdir -p "$SHM"
-# The mind is TOLD, it does not go and look. Red has no `getenv` —
-# measured: `mold :getenv` is `unset` — and calling a missing function
-# at the top level kills the rite before it can testify at all. So the
-# launcher writes down what it knows and conjure.red reads it off disk.
-# Same contract ask.red used for the same reason.
 cat > "$SHM/imp-env.txt" <<ENV
 sd=$SD
 sd-lib=$SD_LIB
 model=$SD_MODEL
 w=$SD_W
 h=$SD_H
+steps=$SD_STEPS
+cfg=$SD_CFG
 llm=$LLM
 llm-url=$LLM_URL
 ENV
@@ -78,7 +146,6 @@ rm -f "$SHM/frame" "$SHM/frame.tmp" "$SHM/conjure.png" \
       "$SHM/conjure-body.json" "$SHM/conjure-reply.json"
 
 # ── cast the rite ───────────────────────────────────────────────────
-# One console instance, and it must be dead before this one starts.
 pkill -x red-view 2>/dev/null
 sleep 0.3
 cp -f "$SRC" "$STAGED"
