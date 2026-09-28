@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# redc — forge Red/System compiler (redc) from source with the Rebol2
+# bootstrap (same bootstrap Red's own CI uses). Rites henceforth speak
+# through binaries, not windows.
+set -euo pipefail
+IMP="$HOME/imp"
+SRC="$IMP/red-view-src"
+REBOL="$IMP/rebol"
+
+cd "$SRC"
+
+if [[ ! -f "$IMP/redc" ]]; then
+  echo "⟡ redc: preparing sources…"
+  if [[ -f build/encap-paths.r.sample && ! -f build/encap-paths.r ]]; then
+    cp build/encap-paths.r.sample build/encap-paths.r
+  fi
+  # the version file wants a git describe; give it a lie, with a header
+  cat > build/git-version.r <<'RB'
+REBOL [
+    Title: "git-version"
+    Purpose: {Stub: build outside a git checkout.}
+]
+Git: "master"
+RB
+
+  echo "⟡ redc: forking the compiler (this takes a while)…"
+  "$REBOL" -qws build/build.r 2>&1 | tail -n 25 || true
+fi
+
+for cand in "$SRC/redc" "$SRC/red"; do
+  if [[ -x "$cand" ]]; then
+    cp -f "$cand" "$IMP/redc"
+    chmod +x "$IMP/redc"
+    echo "⟡ redc forged → $IMP/redc"
+    DISPLAY= "$IMP/redc" -V 2>&1 | head -n 2 || true
+    exit 0
+  fi
+done
+
+echo "⟡ redc: forge failed — no compiler binary produced." >&2
+exit 1

@@ -1,0 +1,3 @@
+RED[0m tail of the line here[0m     
+                              
+                              

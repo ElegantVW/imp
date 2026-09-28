@@ -1,0 +1,1 @@
+[38;2;255;100;50mRED[0m plain [1m[38;2;50;200;255mBLUE[0m tail of text here

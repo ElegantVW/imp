@@ -1,0 +1,3 @@
+RED[0m plain [1mBLUE[0m tail of text he[0m
+                              
+                              

@@ -1,0 +1,38 @@
+/target
+/red-view-src/
+/red-src.zip
+/rebol
+/red-view
+/.cast-*.red
+probe-*.txt
+fn-*.txt
+tick.txt
+render.log
+verdict.txt
+harvest.txt
+gates.txt
+esc-*.txt
+core-*.txt
+load-doctor.txt
+append-test*.txt
+say-test.txt
+keys-probe.fifo
+bytes-probe.bin
+
+# ── added 2026-09-28: evidence is not source ─────────────────────────
+# eval/ and eval-before/ hold per-run artefacts from scripts/imp-eval.sh
+# — the wish, the prompt, the 512x512 png sd-turbo painted, the braille
+# and the frame. They are the record of what the imp did and they are
+# genuinely useful, but they are OUTPUT, they are ~2MB per few runs, and
+# a repository is not an art gallery. (covenant §5 says the filesystem
+# never notices; a git history full of pngs would be the loudest possible
+# contradiction, even if the *program* is the thing bound by the covenant.)
+/eval/
+/eval-before/
+
+# .retired/ is kept on disk as the only undo — the tree is not a git
+# repo, so history was the safety net. Now that it is one, the retired
+# C bridge and the dead render/ask/imp sources are noise. They stay on
+# disk; they just stop being versioned.
+/.retired/
+/.probes/

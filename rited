@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# rited — cast a .red rite, print its testimony.
+# Usage: rited <file.red> [testimony-file ...]
+#   rited norm.red                 # defaults to <stem>-verdict.txt then *.txt
+# The GUI red-view is launched detached; we poll for the testimony.
+set -uo pipefail
+
+RED="$HOME/imp/red-view"
+ROOT="$HOME/imp"
+SCRIPT="${1:?usage: rited <file.red> [testimony ...]}"
+shift
+WITNESS=("$@")
+STEM="$(basename "$SCRIPT" .red)"
+
+# An ABSOLUTE witness is used as-is; a relative one resolves against the
+# repo root, because `do` change-dirs to the script's own directory and
+# a rite in tests/rites/ cannot see the root.
+#
+# rited used to prepend $ROOT unconditionally, so
+#   rited foo.red /dev/shm/imp/foo.txt
+# polled for ~/imp//dev/shm/imp/foo.txt, never found it, and burned the
+# full 90s while the rite wrote the file correctly the whole time. The
+# substrate was innocent; the harness was lying about what it waited
+# for. Same disease as run_rite() in src/bridge.c: a witness must mean
+# what it says, or it is worse than no witness at all.
+absw() {
+  case "$1" in
+    /*) printf '%s\n' "$1" ;;
+     *) printf '%s\n' "$ROOT/$1" ;;
+  esac
+}
+
+# Two horrors, both silent, both fatal if forgotten:
+#   1. Red offers exactly one console instance. A second writes nothing.
+#   2. The console loads scripts from its OWN CWD ONLY. A rite in a
+#      subdirectory is refused without a word — even by absolute path.
+# So: stage the rite in the root, cast it there, and let %literals
+# (%src/core.red, %tests/vectors/…) resolve against that same root.
+STAGED="$ROOT/.cast-$STEM.red"
+cp -f "$SCRIPT" "$STAGED"
+
+pkill -x red-view 2>/dev/null
+for w in "${WITNESS[@]:-}"; do [[ -n "$w" ]] && rm -f "$(absw "$w")"; done
+
+echo "⟡ rited: casting $STEM …" >&2
+( cd "$ROOT" && setsid env DISPLAY="${DISPLAY:-:0}" "$RED" ".cast-$STEM.red" >/dev/null 2>&1 & )
+
+# poll for the witness to be written.
+#
+# RITED_WAIT overrides the deadline, in seconds. 90 is right for a rite
+# that loads core and does arithmetic, and wrong for a rite that FORGES:
+# a 512x512 braille is ~30k `pick` calls through a 32-bit interpreter, and
+# rite-otsu additionally runs a 3840-sample Otsu pass over the same image.
+# Measured: that rite needs over 90s and was being killed mid-flight, so
+# its testimony was partial — which read exactly like a flaky function.
+# A deadline that is too short does not report "slow", it reports "wrong".
+WITED="${RITED_WAIT:-90}"
+deadline=$((SECONDS + WITED))
+while (( SECONDS < deadline )); do
+  for w in "${WITNESS[@]}"; do
+    p="$(absw "$w")"
+    if [[ -s "$p" ]]; then
+      echo "⟡ testimony of $STEM:" >&2
+      cat "$p"
+      pkill -x red-view 2>/dev/null
+      rm -f "$STAGED"
+      exit 0
+    fi
+  done
+  sleep 1
+done
+echo "⟡ rited: $STEM gave no testimony within ${WITED}s (the Red Console window keeps its confession)." >&2
+pkill -x red-view 2>/dev/null
+rm -f "$STAGED"
+exit 1

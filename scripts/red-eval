@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# red-eval — drive the live Red Console as an oracle.
+#
+# The GUI console refuses to auto-run a startup script, but it accepts
+# typed input perfectly well. So we keep ONE console alive and feed it
+# `do %<staged>.red`, waiting for the file that rite writes. This is the
+# same oracle rited uses, reached by a different road.
+#
+# Usage:
+#   red-eval init                     # (re)start the console, return
+#   red-eval <file.red> <answer.txt>  # cast a rite, wait for its answer
+#   red-eval stop                     # reap the console
+set -uo pipefail
+
+ROOT="$HOME/imp"
+RED="$ROOT/red-view"
+export DISPLAY="${DISPLAY:-:0}"
+REPORT="$ROOT/.probes/console-state.txt"
+
+win() { xdotool search --name "Red Console" 2>/dev/null | tail -1; }
+
+focus() {
+    local w
+    w="$(win)"
+    [[ -z "$w" ]] && return 1
+    timeout 5 xdotool windowactivate --sync "$w" 2>/dev/null
+    timeout 5 xdotool windowfocus --sync "$w" 2>/dev/null
+    return 0
+}
+
+case "${1:-}" in
+stop)
+    pkill -9 -x red-view 2>/dev/null
+    echo "reaped"
+    exit 0
+    ;;
+init)
+    pkill -9 -x red-view 2>/dev/null
+    sleep 1
+    ( cd "$ROOT" && setsid env DISPLAY="$DISPLAY" "$RED" >/dev/null 2>&1 </dev/null & )
+    for _ in $(seq 1 30); do
+        sleep 0.5
+        w="$(win)" && [[ -n "$w" ]] && break
+    done
+    # A window existing is NOT readiness. The input loop comes up a beat
+    # later, and anything typed before then is silently dropped. So settle,
+    # then prove the console actually answers before declaring it up.
+    sleep 2
+    printf 'Red [Title: "ready"]\nwrite %%red-ready.txt "ready"\n' > "$ROOT/red-ready.red"
+    for _ in $(seq 1 12); do
+        rm -f "$ROOT/red-ready.txt"
+        focus >/dev/null 2>&1
+        w="$(win)"
+        timeout 20 xdotool type --window "$w" --delay 15 "do %red-ready.red" 2>/dev/null
+        timeout 10 xdotool key --window "$w" --delay 40 Return 2>/dev/null
+        sleep 1.2
+        [[ -s "$ROOT/red-ready.txt" ]] && { echo "console up and answering (win $w)"; exit 0; }
+    done
+    echo "console opened but never answered" >&2
+    exit 1
+    ;;
+esac
+
+SCRIPT="${1:?usage: red-eval <file.red> <answer.txt>}"
+ANSWER="${2:?usage: red-eval <file.red> <answer.txt>}"
+STEM="$(basename "$SCRIPT" .red)"
+
+focus || { echo "no console" >&2; exit 1; }
+sleep 0.4
+
+# stage the rite in the console's own cwd (horror 6).
+# Guard: `cat f > f` truncates the file before reading it, so never
+# stage a file onto itself. Compare resolved paths, not the strings.
+TARGET="$ROOT/$STEM.red"
+if [[ "$(readlink -f "$SCRIPT")" != "$(readlink -f "$TARGET")" ]]; then
+    cat "$SCRIPT" > "$TARGET"
+fi
+rm -f "$ROOT/$ANSWER"
+
+timeout 20 xdotool type --window "$(win)" --delay 12 "do %$STEM.red" 2>/dev/null
+timeout 10 xdotool key --window "$(win)" --delay 40 Return 2>/dev/null
+
+deadline=$(( SECONDS + ${3:-40} ))
+while (( SECONDS < deadline )); do
+    [[ -s "$ROOT/$ANSWER" ]] && { cat "$ROOT/$ANSWER"; exit 0; }
+    sleep 0.4
+done
+exit 1

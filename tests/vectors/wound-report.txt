@@ -1,0 +1,5 @@
+unicode: keeps_38_5=True len=23
+ansi16: keeps_38_5=False len=12
+ansi256: keeps_38_5=False len=12
+truecolor: keeps_38_5=False len=12
+ascii: keeps_38_5=False len=12
