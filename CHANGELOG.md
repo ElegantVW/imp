@@ -1,5 +1,55 @@
 # Imp changelog
 
+## v0.7.0 (2026-09-28) — the window stays open, and a flame while it thinks
+
+Conjure used to close the only door it came through. The button was
+`[unview/all]`: one wish, then darkness, then the user opening the
+window again like knocking twice. Now the window does not close. A
+second wish is the same button again, and the picture changes under
+your hand.
+
+**The pipeline moved into a library.** `src/conjure.red` was 557 lines
+that `quit` on every error, and `quit` kills a window. So the whole
+rite lives in `src/conjure-lib.red` now, which never quits and never
+views: it returns `"ok"` or a `fail:` string. Two doors, same words —
+`con-run` blocks for `imp "a wish"`, `con-begin`/`con-tick` go
+asynchronous for the window. `src/conjure.red` is nineteen lines of
+wrapper. The one-shot was re-proved after the move: 19454 bytes of
+lighthouse, exit 0, untouched behaviour.
+
+**The flame is not decoration.** `call/wait` freezes the event loop
+for the whole of sd-cli, and a four-second freeze with no movement
+reads as a hang to anyone who has ever lost work to one. So the long
+commands run without `/wait` (hazard 23: without it you get a PID),
+the shell drops its exit code in a file, and a `rate 0:0:0.06` facet
+cycles six tongues of fire while it polls. Sealed by
+`tests/rites/rite-flame.red`: 18 ticks during a one-second sleep,
+sentinel `0`.
+
+**Two wishes, one window, all sealed.** The press lives in a named
+word — `con-press` — because a synthetic click never reaches a
+button's `on-click` (hazard 61: busy stayed `"0"` through ten pumps;
+the button is one word long and the rite calls the same words a
+finger runs). `tests/rites/rite-tui-conjure.red` runs the full GPU
+pipeline twice in one window:
+
+```
+button-found: "SEALED"   A first-finished: "SEALED"   run1: "ready. wish again."
+B flame-moved: "SEALED"   tongues: 14   C picture-new: "SEALED"   pic: "512x512"
+D window-open: "SEALED"   E second-finished: "SEALED"   run2: "ready. wish again."
+F still-open: "SEALED"   G single-write: "SEALED - this file is the only product"
+```
+
+It is slow (two paintings, minutes) so it has its own door —
+`./build.sh tui-conjure` — and `all` stays fast. The first draft of
+that rite segfaulted the console once; bisection found the click that
+did nothing and the guards that were missing, and the rewrite has run
+clean. That crash is on the record because an unisolated crash does
+not become harmless by being followed by a seal. (`build.sh all` went
+green at the end, with one honest scare along the way: rite-view read
+a dark pixel twice on the live desktop — a screen-capture artifact,
+green before and after, see hazard 54.)
+
 ## v0.6.0 (2026-09-28) — the TUI, and the install that was never done
 
 Bare `imp` opens a window. That is the whole feature, and it took longer

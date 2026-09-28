@@ -103,6 +103,25 @@ either (faces >= 4) [
     say "D mode-cycler: BROKEN, the layout has too few faces"
 ]
 
+; ── F: the conjure button is there, and it is a button ─────────────
+btn: none
+foreach f pane [
+    if (f/type = 'button) [btn: f]
+]
+say "F conjure-button: " [either btn ["SEALED"]["BROKEN, no button in the pane"]]
+
+; ── G: the image is LAST, because the old rite picks the last face ─
+; faces are all type 'base in this build (mold gives "base"), so prove
+; by SIZE: the picture is 300 wide, nothing else is.
+either (faces >= 1) [
+    last-f: pick pane faces
+    last-w: last-f/size/x
+    say "G image-last: " [either (last-w >= 300) ["SEALED"]["BROKEN"]]
+    say "   last width: " [last-w]
+][
+    say "G image-last: " ["BROKEN, empty pane"]
+]
+
 say "E single-write: " ["SEALED - this file is the only product"]
 
 unview/all

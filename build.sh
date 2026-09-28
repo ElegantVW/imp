@@ -3,6 +3,8 @@
 #
 #   ./build.sh            verify substrate + the sealed core
 #   ./build.sh smoke      conjure something and say whether it spoke
+#   ./build.sh tui-conjure
+#                         two wishes in one window, flame and all (slow, GPU)
 #   ./build.sh install    install the launcher into ~/bin/imp
 #   ./build.sh clean      remove stray testimony files
 #
@@ -196,6 +198,26 @@ smoke() {
   rm -f "$out" "$out.err"
 }
 
+# ── stay-open conjure: two wishes, one window, flame and all ──────────
+# Slow (two full GPU pipelines, ~2-5 min) and honest: the press, the
+# flame, the picture, the window still open, the second wish. Sealed by
+# tests/rites/rite-tui-conjure.red. NOT part of `all` — that stays fast.
+tui_conjure() {
+  echo "imp: tui-conjure (two wishes in one window — slow, needs hand + mouth)"
+  if [[ -z "${DISPLAY:-}" ]]; then
+    printf 'imp:   no DISPLAY; the window cannot be proved here.\n' >&2
+    return 0
+  fi
+  RITED_WAIT="${RITED_WAIT:-500}" \
+    "$ROOT/rited" "$ROOT/tests/rites/rite-tui-conjure.red" \
+    "$SHM/tui-conjure-witness.txt" >/dev/null || die "rite-tui-conjure gave no testimony"
+  if grep -q 'BROKEN' "$SHM/tui-conjure-witness.txt"; then
+    die "stay-open conjure is BROKEN: $(tr '\n' ' ' < "$SHM/tui-conjure-witness.txt")"
+  fi
+  tr '\n' ' ' < "$SHM/tui-conjure-witness.txt"
+  printf '\n'
+}
+
 # ── rites ───────────────────────────────────────────────────────────────
 rites() {
   echo "imp: rites"
@@ -212,6 +234,13 @@ rites() {
     [[ -e "$t" ]] || continue
     [[ "$(basename "$t")" == _* ]] && continue
     [[ "$(basename "$t")" == probe-* ]] && continue
+    # rite-tui-conjure is a five-minute GPU proof, not a ninety-second
+    # rite. It has its own door (`./build.sh tui-conjure`); running it
+    # here would only prove that 90 seconds is shorter than 5 minutes.
+    if [[ "$(basename "$t")" == rite-tui-conjure.red ]]; then
+      printf 'imp:   %-22s (slow GPU proof — see ./build.sh tui-conjure)\n' "$(basename "$t")"
+      continue
+    fi
     "$ROOT/rited" "$t" "$(basename "${t%.red}").txt" >/dev/null || true
     printf 'imp:   %-22s %s\n' "$(basename "$t")" \
       "$(tr '\n' ' ' < "$ROOT/$(basename "${t%.red}").txt" 2>/dev/null | cut -c1-58)"
@@ -254,6 +283,7 @@ case "${1:-all}" in
   otsu)     otsu ;;
   view)     view ;;
   tui)      tui ;;
+  tui-conjure) tui_conjure ;;
   install)  install_imp ;;
   clean)    find "$IMP" -maxdepth 2 -name '*.txt' -newermt '-1 day' \
               -not -name 'LICENSE' -delete 2>/dev/null || true

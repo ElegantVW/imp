@@ -32,9 +32,18 @@ Red [Title: "imp" Needs: View]
 ; counter written as `n: n + 1` in an on-time block never reaches its
 ; threshold and the window never closes. A count kept in a face's text
 ; works. Every piece of state here is a face.
+;
+; ── CONJURE STAYS IN THE WINDOW ──────────────────────────────────────
+; The button used to `unview/all`. That closed the only door. It now
+; runs `con-press`, and a rate facet on the flame face polls `con-tick`
+; until the png is ready. The window does not close. A second wish is
+; the same button again.
+;
+; `call/wait` would freeze the event loop for the whole of sd-cli.
+; The flame is not decoration: it is how a day-to-day user knows the
+; freeze is a painting, not a hang. Hazard 23, sealed by rite-flame.
 
-do %core.red
-do %forge.red
+do %conjure-lib.red
 
 ; ── the evil opening posture ────────────────────────────────────────
 ; The window does not remember anything, and it does not open the same way
@@ -95,6 +104,42 @@ either exists? pic [
 ;     the plain string: `form "normal"` is `normal`.
 mode-text: form mode
 size-text: form size
+ready-text: "type a wish and press conjure."
+idle-flame: " "
+; ── the press. NAMED, so a rite can call the exact path a finger takes.
+; The button below is one word long. Synthetic clicks do not reach a
+; button's on-click in this build (measured: busy stayed "0" through
+; send-event type 'click), so the rite calls this and the human clicks
+; it — same words either way. Ends on `out`, never on a conditional.
+con-press: func [/local out][
+    out: "already painting."
+    either (busy-face/text = "1") [
+        status-face/text: "already painting."
+        out: "already painting."
+    ][
+        either (wish-face/text = none) [
+            status-face/text: "speak a wish first."
+            out: "speak a wish first."
+        ][
+            either ((length? wish-face/text) = 0) [
+                status-face/text: "speak a wish first."
+                out: "speak a wish first."
+            ][
+                busy-face/text: "1"
+                flame-face/text: pick CON-FLAMES 1
+                status-face/text: form (con-begin wish-face/text size-face/text)
+                out: status-face/text
+                either ((con-kind status-face/text) = "fail") [
+                    busy-face/text: "0"
+                    flame-face/text: idle-flame
+                    out: status-face/text
+                ][
+                ]
+            ]
+        ]
+    ]
+    out
+]
 win: layout [
     title "imp"
     on-key [
@@ -149,7 +194,31 @@ win: layout [
     text 320 "size" font [color: 140.140.160 size: 9]
     size-face: text 200 size-text font [color: 210.210.220 size: 12]
     return
-    button 120 "conjure" [unview/all]
+    button 120 "conjure" [con-press]
     return
-    image 300x300 pic
+    status-face: text 320 ready-text font [color: 140.140.160 size: 9]
+    return
+    busy-face: text 10 "0" font [color: 18.18.24 size: 1]
+    return
+    flame-face: text 320 idle-flame font [color: 220.90.40 size: 14] rate 0:0:0.06 on-time [
+        either (busy-face/text = "1") [
+            flame-face/text: con-next-flame flame-face/text
+            status-face/text: form con-tick
+            either ((con-kind status-face/text) = "ok") [
+                busy-face/text: "0"
+                pic-face/image: CON-PIC
+                status-face/text: "ready. wish again."
+                flame-face/text: idle-flame
+            ][
+                either ((con-kind status-face/text) = "fail") [
+                    busy-face/text: "0"
+                    flame-face/text: idle-flame
+                ][
+                ]
+            ]
+        ][
+        ]
+    ]
+    return
+    pic-face: image 300x300 pic
 ]
