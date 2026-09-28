@@ -1,8 +1,8 @@
-# Imp
+![Imp hero](assets/hero/imp.svg)
 
-![Imp](assets/hero/imp.svg)
+# Imp — terminal art dragon 🐲
 
-> **a grumpy dragon that paints terminal art and mocks it**
+> **a grumpy dragon that paints terminal art from a wish — and mocks it**
 
 Imp conjures ANSI art from a wish. A haiku dragon called Imp's Comment
 snarks about the result. Every piece is saved to `~/pixie_art/` as `.txt`
@@ -21,6 +21,19 @@ measured on the interpreter we ship and cross-checked against the official
 specification: [`docs/RED.md`](docs/RED.md). Idioms, studied from 652 files
 of real Red: [`docs/RED-IDIOMS.md`](docs/RED-IDIOMS.md). What other people
 have built in Red: [`docs/RED-PROJECTS.md`](docs/RED-PROJECTS.md).
+
+## Look
+
+![Imp frame](assets/screenshots/imp-frame.png)
+![Imp art](assets/screenshots/imp-art.png)
+![Imp dove](assets/screenshots/imp-dove.png)
+
+```
+,   ,
+ \ /
+  X
+ \|/
+```
 
 ## Status
 
