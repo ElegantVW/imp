@@ -1,5 +1,23 @@
 # Imp changelog
 
+## v0.12.1 (2026-09-29) — audit: the flame's missing tongues, stale words
+
+An audit morning. The suite is green, the docs number clean (65/65),
+no stuck processes — but two things were off and one count lied.
+
+**The flame only burned four tongues.** Two of the six entries in
+`CON-FLAMES` were byte-identical, and `find` returns the first match,
+so the cycle 4→(finds 2)→3 could never reach 5 and 6. The "tongues"
+counts in old testimonies (14, 25, 39…) were never a real metric —
+through real faces, trailing-space normalization collapses them
+further. Entry four now leans the other way; the probe walks all six
+through the function *and* through a live face. The movement seals
+always held; now the count means something too.
+
+**Stale words.** `build.sh tui` still described the mode cycler two
+releases after braille left, and rite-tui's panel comment named faces
+that no longer exist. Both now say what is there.
+
 ## v0.12.0 (2026-09-28) — three hands, a steps fader, and the clobber
 
 **Hands.** A drop-down: turbo (4 steps, ~5s), SDXL (20 steps, ~51s),

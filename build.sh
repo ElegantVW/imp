@@ -160,12 +160,12 @@ view() {
 
 # ── the TUI ────────────────────────────────────────────────────────────
 # The window the user actually opens. rite-view proves the view module
-# works; this proves the TUI itself — its panel, its picture, and the
-# mode cycler. The cycler is the one that was asked for: a left key
-# flips normal to braille, and until a key changes the mode face under
-# an automated send, that is a hope rather than a fact.
+# works; this proves the TUI itself — its panel, its picture, its
+# drop-downs and slider, its quit paths. The quit key is the one that
+# was asked for: a q that closes the window under an automated send
+# is a fact rather than a hope.
 tui() {
-  echo "imp: tui (the window, its panel, and the mode cycler)"
+  echo "imp: tui (the window, its panel, its choices, its way out)"
   if [[ -z "${DISPLAY:-}" ]]; then
     printf 'imp:   no DISPLAY; the TUI cannot be proved here.\n' >&2
     return 0

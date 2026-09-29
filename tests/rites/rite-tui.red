@@ -45,7 +45,7 @@ view/no-wait win
 repeat i 5 [do-events/no-wait]
 
 ; ── A: the panel is there ──────────────────────────────────────────
-; the layout is: wish-field, mode-face, size-face, button, image.
+; wish row, size row, hand row, style row, status row, picture.
 pane: win/pane
 faces: length? pane
 say "A panel-present: " [either (faces >= 5) ["SEALED"]["BROKEN"]]
