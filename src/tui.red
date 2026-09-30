@@ -108,6 +108,18 @@ either exists? pic [
 ;     Measured: mode-face/text was `{"normal"}`, so a rite searching for
 ;     `"normal"` never matched and reported the cycler BROKEN. `form` gives
 ;     the plain string: `form "normal"` is `normal`.
+; THE HOUSE PALETTE (docs/SIGIL.md §3), as tuples. Layout below uses
+; these same numbers as literals — VID takes words in some slots and
+; not others, and literals are proven everywhere (probe-style). Code
+; (flare/calm) uses the words. If the two drift, the theme seals tell.
+;   background #1A1218   text #F0E4EE   muted #6B6FA8
+;   imp        #C89BE0   flame #E8A0B4 (pixie pink, a softer fire)
+IMP-BG: 26.18.24
+IMP-TEXT: 240.228.238
+IMP-MUTE: 107.111.168
+IMP-ACCENT: 200.155.224
+IMP-FLAME: 232.160.180
+IMP-FONT: "DejaVu Sans Mono"
 ready-text: "type a wish and press conjure."
 idle-flame: " "
 ; ── the press. NAMED, so a rite can call the exact path a finger takes.
@@ -158,6 +170,7 @@ con-press: func [/local out sz-text n enh hi][
                         ]
                         con-sync-steps hi
                         busy-face/text: "1"
+                        con-flare
                         flame-face/text: pick CON-FLAMES 1
                         enh: either ((enh-btn/text) = "enhance: off") ["off"]["on"]
                         status-face/text: form (con-begin wish-face/text sz-text style-dd/selected enh hi)
@@ -173,6 +186,32 @@ con-press: func [/local out sz-text n enh hi][
             ]
         ]
     ]
+    out
+]
+; ── pulse. Brighten for the run, dim when it lands. Named, so a
+; rite can call them without a GPU: the pattern (face/font/color,
+; face/font/size) is the vendor TUI's own.
+con-flare: func [/local out][
+    status-face/font/color: IMP-TEXT
+    flame-face/font/size: 16
+    out: "lit"
+    out
+]
+con-calm: func [/local out][
+    status-face/font/color: IMP-MUTE
+    flame-face/font/size: 14
+    out: "dim"
+    out
+]
+; ── steps readout. The label beside the fader, in imp purple. Runs
+; on slider on-change (which fires on drags AND programmatic sets, so
+; the preset sync moves the number for free) and direct from a rite.
+con-steps-label: func [/local pct steps out][
+    out: "4"
+    pct: to integer! (step-slider/data * 100)
+    steps: either (pct < 2) [1][to integer! (pct / 2)]
+    steps-num/text: form steps
+    out: steps-num/text
     out
 ]
 ; ── the way out. NAMED, like the press, so a rite can walk it.
@@ -286,41 +325,44 @@ win: layout/flags [
             ]
         ]
     ]
-    backdrop 18.18.24
+    backdrop 26.18.24
     across
-    text 40 "wish" font [color: 140.140.160 size: 9]
-    wish-face: field 200
-    button 120 "conjure" [con-press]
-    button 60 "quit" [con-quit]
+    text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    wish-face: field 200 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
+    conjure-btn: base 120x28 200.155.224 font [name: "DejaVu Sans Mono" color: 26.18.24 size: 11 style: 'bold] "conjure" on-click [con-press]
+    quit-btn: base 60x28 26.18.24 font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] "quit" on-click [con-quit]
     return
-    text 40 "size" font [color: 140.140.160 size: 9]
-    size-dd: drop-down 100 data SIZES
-    size-custom: field 80
-    busy-face: text 10 "0" font [color: 18.18.24 size: 1]
+    text 40 "size" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    size-dd: drop-down 100 data SIZES font [name: "DejaVu Sans Mono" color: 240.228.238]
+    size-custom: field 80 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
+    busy-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
-    text 40 "hand" font [color: 140.140.160 size: 9]
-    hand-dd: drop-down 100 data CON-HAND-NAMES
-    text 40 "steps" font [color: 140.140.160 size: 9]
-    step-slider: slider 120 data 8%
-    sync-face: text 10 "1:8" font [color: 18.18.24 size: 1]
+    text 40 "hand" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    hand-dd: drop-down 100 data CON-HAND-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
+    text 40 "steps" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    step-slider: slider 120 data 8% on-change [con-steps-label]
+    steps-num: text 40 "4" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 12]
+    sync-face: text 10 "1:8" font [color: 26.18.24 size: 1]
     return
-    text 40 "style" font [color: 140.140.160 size: 9]
-    style-dd: drop-down 150 data CON-STYLE-NAMES
-    enh-btn: button 120 "enhance: on" [con-flip]
+    text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    style-dd: drop-down 150 data CON-STYLE-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
+    enh-btn: base 120x28 26.18.24 font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] "enhance: on" on-click [con-flip]
     return
-    status-face: text 300 ready-text font [color: 140.140.160 size: 9]
-    flame-face: text 110 idle-flame font [color: 220.90.40 size: 14] rate 0:0:0.06 on-time [
+    status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    flame-face: text 110 idle-flame font [name: "DejaVu Sans Mono" color: 232.160.180 size: 14] rate 0:0:0.06 on-time [
         either (busy-face/text = "1") [
             flame-face/text: con-next-flame flame-face/text
             status-face/text: form con-tick
             either ((con-kind status-face/text) = "ok") [
                 busy-face/text: "0"
+                con-calm
                 pic-face/image: CON-PIC
                 status-face/text: "ready. wish again."
                 flame-face/text: idle-flame
             ][
                 either ((con-kind status-face/text) = "fail") [
                     busy-face/text: "0"
+                    con-calm
                     flame-face/text: idle-flame
                 ][
                 ]

@@ -84,16 +84,21 @@ say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
 say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 
 ; ── F: the three buttons are there — conjure, quit, enhance ───────
+; Flat base faces now, not native buttons: match by their own words.
 n-btn: 0
 conjure?: false
 quit?: false
 enh?: false
 foreach f pane [
-    if (f/type = 'button) [
-        n-btn: n-btn + 1
-        if ((f/text) = "conjure") [conjure?: true]
-        if ((f/text) = "quit") [quit?: true]
-        if ((find f/text "enhance") <> none) [enh?: true]
+    t: try [f/text]
+    either error? t [
+    ][
+        either (t = none) [
+        ][
+            if ((t = "conjure")) [n-btn: n-btn + 1  conjure?: true]
+            if ((t = "quit")) [n-btn: n-btn + 1  quit?: true]
+            if ((find t "enhance") <> none) [n-btn: n-btn + 1  enh?: true]
+        ]
     ]
 ]
 say "F buttons: " [either (((n-btn = 3) and conjure? and quit?) and enh?) ["SEALED"]["BROKEN"]]
@@ -183,13 +188,33 @@ n3: con-get-hand-name hh
 say "S2 hand-name: " [either (((n1 = "SDXL") and (n2 = "turbo")) and (n3 = "SDXL")) ["SEALED"]["BROKEN"]]
 say "   roundtrip: " [(rejoin [hh " -> " n1 "/" n2 "/" n3])]
 
-; ── I: the quit button's click dispatch closes the window ─────────
+; ── V: the house palette holds the faces ───────────────────────────
+; Backdrop, conjure fill, flame pink, mono name — SIGIL §3 in tuples.
+say "V theme: " [either ((((mold win/color) = "26.18.24") and ((mold conjure-btn/color) = "200.155.224")) and (((mold flame-face/font/color) = "232.160.180") and ((mold status-face/font/name) = {"DejaVu Sans Mono"}))) ["SEALED"]["BROKEN"]]
+say "   house: " [(rejoin [(mold win/color) " " (mold conjure-btn/color) " " (mold flame-face/font/color)])]
+
+; ── U: the steps number tracks the fader ─────────────────────────────
+step-slider/data: 40%
+repeat i 4 [do-events/no-wait]
+say "U steps-live: " [either ((steps-num/text) = "20") ["SEALED"]["BROKEN"]]
+say "   readout: " [steps-num/text]
+con-steps-label
+say "   direct: " [steps-num/text]
+
+; ── X: pulse brightens for the run, dims when it lands ───────────────
+con-flare
+flare-ok: ((mold status-face/font/color) = "240.228.238")
+flare-ok2: (flame-face/font/size = 16)
+con-calm
+say "X pulse: " [either ((flare-ok and flare-ok2) and (((mold status-face/font/color) = "107.111.168") and (flame-face/font/size = 14))) ["SEALED"]["BROKEN"]]
 ; Synthetic clicks do not inject (hazard 61), so dispatch the actor
 ; the way the event loop would: do-actor on the quit face, then pump.
 quit-btn: none
 foreach f pane [
-    if (f/type = 'button) [
-        if ((f/text) = "quit") [quit-btn: f]
+    t2: try [f/text]
+    either error? t2 [
+    ][
+        if ((t2 = "quit")) [quit-btn: f]
     ]
 ]
 either quit-btn [

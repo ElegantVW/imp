@@ -1,5 +1,25 @@
 # Imp changelog
 
+## v0.13.0 (2026-09-30) — the house theme, counted steps, a pulse
+
+The window wears SIGIL now: backdrop `#1A1218`, text `#F0E4EE`,
+muted `#6B6FA8`, imp purple `#C89BE0`, pixie-pink flame `#E8A0B4` —
+one source of truth in `tui.red`, sealed face by face. DejaVu Sans
+Mono throughout, labels small and muted, values mid-weight. Buttons
+are flat base faces, no native chrome: conjure purple with dark bold
+text, quit dark with muted text, enhance dark with purple state text.
+The printed frame keeps its oracle-pinned SGRs — the window and the
+terminal match in spirit, byte-exactness wins over hue.
+
+**Steps counted.** A purple number beside the fader, live: slider
+`on-change` fires on drags *and* programmatic sets (hazard 66), so
+the preset sync moves the number for free and a rite calls the same
+named words. `steps [slider] 20`, always truthful.
+
+**Pulse.** The status brightens and the flame grows a size while a
+run is out, and dims back when it lands — `con-flare`/`con-calm`,
+named and sealed without a GPU, in the vendor's own facet pattern.
+
 ## v0.12.1 (2026-09-29) — audit: the flame's missing tongues, stale words
 
 An audit morning. The suite is green, the docs number clean (65/65),

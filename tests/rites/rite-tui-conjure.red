@@ -47,7 +47,11 @@ repeat i 5 [do-events/no-wait]
 
 btn: none
 foreach f win/pane [
-    if (f/type = 'button) [btn: f]
+    t0: try [f/text]
+    either error? t0 [
+    ][
+        if ((t0 = "conjure")) [btn: f]
+    ]
 ]
 say "button-found: " [either btn ["SEALED"]["BROKEN"]]
 
