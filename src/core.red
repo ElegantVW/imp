@@ -14,27 +14,34 @@ hold-rite: func [name [string!] won [logic!] witness [string!] /local mark][
     rejoin [mark " " name " :: " witness]
 ]
 
-weigh-cell: func [ch [char!] /local n][
+; weigh-cell, compiler-clean edition. The old spelling was one
+; `either any [...]` over seventeen `all` ranges; the Red/System
+; backend chokes on boolean trees that size (measured: internal error
+; `[ptr/1: ptr/1 + size]`). Seventeen sequential guarded assignments
+; over DISJOINT ranges mean exactly the same OR. Uses nothing but
+; one-armed `if` and comparisons — every construct already proven to
+; compile. Re-sealed by rite-two after the change, as law requires.
+weigh-cell: func [ch [char!] /local n w][
     n: to integer! ch
-    either any [
-        all [n >= 4352 n <= 4447]
-        all [n >= 9001 n <= 9002]
-        all [n >= 11904 n <= 12351]
-        all [n >= 12352 n <= 13311]
-        all [n >= 13312 n <= 19903]
-        all [n >= 19968 n <= 42191]
-        all [n >= 43360 n <= 43391]
-        all [n >= 44032 n <= 55203]
-        all [n >= 63744 n <= 64255]
-        all [n >= 65040 n <= 65049]
-        all [n >= 65072 n <= 65135]
-        all [n >= 65280 n <= 65376]
-        all [n >= 65504 n <= 65510]
-        all [n >= 127744 n <= 128591]
-        all [n >= 128640 n <= 128767]
-        all [n >= 129024 n <= 129535]
-        all [n >= 131072 n <= 262141]
-    ][2][1]
+    w: 1
+    if (n >= 4352) [if (n <= 4447) [w: 2]]
+    if (n >= 9001) [if (n <= 9002) [w: 2]]
+    if (n >= 11904) [if (n <= 12351) [w: 2]]
+    if (n >= 12352) [if (n <= 13311) [w: 2]]
+    if (n >= 13312) [if (n <= 19903) [w: 2]]
+    if (n >= 19968) [if (n <= 42191) [w: 2]]
+    if (n >= 43360) [if (n <= 43391) [w: 2]]
+    if (n >= 44032) [if (n <= 55203) [w: 2]]
+    if (n >= 63744) [if (n <= 64255) [w: 2]]
+    if (n >= 65040) [if (n <= 65049) [w: 2]]
+    if (n >= 65072) [if (n <= 65135) [w: 2]]
+    if (n >= 65280) [if (n <= 65376) [w: 2]]
+    if (n >= 65504) [if (n <= 65510) [w: 2]]
+    if (n >= 127744) [if (n <= 128591) [w: 2]]
+    if (n >= 128640) [if (n <= 128767) [w: 2]]
+    if (n >= 129024) [if (n <= 129535) [w: 2]]
+    if (n >= 131072) [if (n <= 262141) [w: 2]]
+    w
 ]
 
 FALLEN: [

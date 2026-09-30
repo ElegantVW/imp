@@ -2,17 +2,17 @@
 # build.sh — the vessel speaks; the imp answers.
 #
 #   ./build.sh            verify substrate + the sealed core
+#   ./build.sh console    compile the one-shot door to imp-console
 #   ./build.sh smoke      conjure something and say whether it spoke
 #   ./build.sh tui-conjure
 #                         two wishes in one window, flame and all (slow, GPU)
 #   ./build.sh install    install the launcher into ~/bin/imp
 #   ./build.sh clean      remove stray testimony files
 #
-# There is nothing to COMPILE. That is the point of v0.2.0: the C bridge
-# is gone, so `build.sh` no longer needs a C compiler, and `install` is a
-# copy rather than a build. Red has no console-only build on Linux and
-# redc needs the proprietary enpro SDK, but neither matters any more —
-# the launcher is bash and the program is Red.
+# `console` is the one compile here: red.r + the repo rebol turn the
+# pipeline into a native console binary (argv in, frame on stdout).
+# The enpro scare was a red herring — only redc-as-a-binary needs it;
+# red.r compiles directly. The TUI stays interpreted (GTK View).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 IMP="$HOME/imp"
@@ -181,9 +181,17 @@ tui() {
 }
 
 # ── smoke: one real conjuring, end to end ───────────────────────────────
+# Through the compiled binary: argv in, frame on stdout, exit code out.
 smoke() {
   echo "imp: smoke"
   substrate
+  local f stale=false
+  for f in src/console.red src/conjure-lib.red src/core.red src/frame.red src/forge.red; do
+    if [[ ! -x "$ROOT/imp-console" ]] || [[ "$ROOT/$f" -nt "$ROOT/imp-console" ]]; then
+      stale=true
+    fi
+  done
+  if $stale; then console; fi
   local out
   out="$(mktemp)"
   if "$HOME/bin/imp" "a lighthouse in a storm" > "$out" 2>"$out.err"; then
@@ -275,9 +283,35 @@ install_imp() {
   fi
 }
 
+# ── console: the one-shot door, compiled ─────────────────────────────
+# argv in, frame out on stdout, real exit codes. The build concats
+# the pipeline (headers and runtime `do` lines stripped — the binary
+# carries everything, resolves nothing) under src/console.red's
+# header and compiles with red.r + the repo rebol. First build forges
+# libRedRT (~60s); later ones take seconds.
+console() {
+  echo "imp: console (compiled one-shot)"
+  local bundle="$ROOT/.console-build.red"
+  {
+    head -n 1 "$ROOT/src/console.red"
+    tail -n +2 "$ROOT/src/core.red"
+    tail -n +2 "$ROOT/src/frame.red"
+    tail -n +2 "$ROOT/src/forge.red"
+    tail -n +2 "$ROOT/src/conjure-lib.red" | grep -v '^do %'
+    tail -n +2 "$ROOT/src/console.red"
+  } > "$bundle"
+  ( cd "$ROOT" && "$ROOT/rebol" -qws "$ROOT/red-view-src/red.r" -c ".console-build.red" ) \
+    || die "the console did not compile"
+  mv -f "$ROOT/.console-build" "$ROOT/imp-console"
+  chmod +x "$ROOT/imp-console"
+  rm -f "$bundle"
+  printf 'imp:   imp-console (%s bytes)\n' "$(wc -c < "$ROOT/imp-console" | tr -d ' ')"
+}
+
 # ── main ────────────────────────────────────────────────────────────────
 case "${1:-all}" in
   all)      substrate; core; forge; frame; otsu; view; tui ;;
+  console)  console ;;
   smoke)    smoke ;;
   rites)    rites ;;
   otsu)     otsu ;;

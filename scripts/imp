@@ -25,9 +25,6 @@ set -uo pipefail
 IMP="$HOME/imp"
 RED="$IMP/red-view"
 SHM="/dev/shm/imp"
-SRC="$IMP/src/conjure.red"
-TUI="$IMP/src/tui.red"
-STAGED="$IMP/.cast-conjure.red"
 STAGED_TUI="$IMP/.cast-tui.red"
 
 SD="$HOME/.local/lib/sd/sd-cli"
@@ -148,74 +145,11 @@ if [[ -z "$WISH" ]]; then
   [[ -n "$WISH" ]] || die "an empty wish conjures nothing."
 fi
 
-# ── the covenant, checked before anything runs ──────────────────────
-case "$SD_MODEL" in /*) ;; *) die "the model path is not absolute" ;; esac
-[[ -x "$SD"  ]] || die "no hand at $SD (sd-cli)"
-[[ -f "$SD_MODEL" ]] || die "no weights at $SD_MODEL"
-
-mkdir -p "$SHM"
-cat > "$SHM/imp-env.txt" <<ENV
-sd=$SD
-sd-lib=$SD_LIB
-model=$SD_MODEL
-sdxl=$SD_SDXL
-pony=$SD_PONY
-w=$SD_W
-h=$SD_H
-steps=$SD_STEPS
-cfg=$SD_CFG
-llm=$LLM
-llm-url=$LLM_URL
-ENV
-# the filesystem never notices: the job and the frame live in tmpfs
-printf '%s' "$WISH" > "$SHM/job"
-rm -f "$SHM/frame" "$SHM/frame.tmp" "$SHM/conjure.png" \
-      "$SHM/imp-art.txt" "$SHM/conjure.log" \
-      "$SHM/conjure-body.json" "$SHM/conjure-reply.json"
-
-# ── cast the rite ───────────────────────────────────────────────────
-pkill -x red-view 2>/dev/null
-sleep 0.3
-cp -f "$SRC" "$STAGED"
-( cd "$IMP" && setsid env DISPLAY="${DISPLAY:-:0}" "$RED" ".cast-conjure.red" \
-    >/dev/null 2>&1 & )
-
+# ── one wish, one process, no waiting room ────────────────────────────
+# imp-console is compiled Red: argv in, frame out on stdout, real exit
+# codes. It ensures its own env, checks its own covenant, stages
+# nothing and polls nothing. What used to be seventy lines of launch,
+# wait on the frame, and failure report is one exec. The TUI branch
+# above keeps its bash (a window needs supervising; Red cannot).
 printf '\033[38;5;175m⛓ the imp is thinking\033[0m  \033[38;5;60m(sd-cli ~4s, then red forges)\033[0m\n' >&2
-
-# ── wait on the FRAME, not on a log, and not on the process ─────────
-# A log is a diary, not a bell. The frame is the rite's single end
-# product, published by an atomic rename, so its existence means THIS
-# run finished. Waiting on the log is how the C bridge used to kill the
-# interpreter mid-paint. docs/GRIMOIRE.md hazard 21.
-#
-# And do NOT break early when red-view is absent from the process table.
-# This loop used to do exactly that, and it is a race with our own
-# startup: the interpreter is launched in a background subshell, so on
-# the first poll — 0 ms later — it is not there yet, the launcher
-# declared failure and exited, and the rite went on to paint a perfectly
-# good 18 KB frame, orphaned, some 200 seconds later. Measured: exit 1,
-# a complete frame on disk, and a log ending in DONE.
-#
-# The frame is the witness. The deadline is the only backstop.
-deadline=$((SECONDS + 900))
-while (( SECONDS < deadline )); do
-  if [[ -s "$SHM/frame" ]]; then
-    pkill -x red-view 2>/dev/null
-    rm -f "$STAGED"
-    cat "$SHM/frame"
-    printf '\n'
-    exit 0
-  fi
-  sleep 0.2
-done
-
-# ── it failed. say so, and say what it last said. ───────────────────
-pkill -x red-view 2>/dev/null
-rm -f "$STAGED"
-printf 'imp: the vessel accepted the wish and painted nothing.\n' >&2
-if [[ -s "$SHM/conjure.log" ]]; then
-  printf 'imp: its last testimony:\n' >&2
-  sed 's/^/    /' "$SHM/conjure.log" >&2
-  printf '\n' >&2
-fi
-exit 1
+exec "$IMP/imp-console" "$WISH"

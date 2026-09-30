@@ -1,6 +1,23 @@
 # Imp changelog
 
-## v0.15.0 (2026-09-30) — the mouth learns hands, busy is unmistakable
+## v0.16.0 (2026-09-30) — the one-shot goes native
+
+`imp "a wish"` is now a compiled Red binary: argv in, frame on
+stdout, real exit codes. No staged files, no frame polling, no
+seventy-line wait room. `scripts/imp` kept only what Red cannot do —
+the TUI branch (a window needs supervising) and the three-line tty
+prompt. The old interpreted wrapper stays as a documented fallback.
+
+How it was forged: `red.r` + the repo `rebol` compile directly —
+the `enpro` scare was a red herring (only redc-as-a-binary needs
+it). Findings along the way, all measured: a 17-branch `any`/`all`
+crashes the backend (rewritten as guarded assignments, re-sealed
+byte-exact); func-assigned globals need pre-declaring; the compiler
+rejects escapes the interpreter tolerates; argv arrives
+Bourne-quoted. Hazards 67–70.
+
+The TUI is untouched and stays interpreted — all its seals stand on
+the interpreter they were sworn on.
 
 **Hand-aware enhance.** The rewriter used to write one kind of text
 for all three hands — atmosphere captions that starve Pony (which
