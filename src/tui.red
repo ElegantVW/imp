@@ -329,8 +329,8 @@ win: layout/flags [
     across
     text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     wish-face: field 200 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
-    conjure-btn: base 120x28 200.155.224 font [name: "DejaVu Sans Mono" color: 26.18.24 size: 11 style: 'bold] "conjure" on-click [con-press]
-    quit-btn: base 60x28 26.18.24 font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] "quit" on-click [con-quit]
+    conjure-btn: button 120 "conjure" font [name: "DejaVu Sans Mono" color: 26.18.24 size: 11 style: 'bold] [con-press]
+    quit-btn: button 60 "quit" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-quit]
     return
     text 40 "size" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     size-dd: drop-down 100 data SIZES font [name: "DejaVu Sans Mono" color: 240.228.238]
@@ -346,7 +346,7 @@ win: layout/flags [
     return
     text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     style-dd: drop-down 150 data CON-STYLE-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
-    enh-btn: base 120x28 26.18.24 font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] "enhance: on" on-click [con-flip]
+    enh-btn: button 120 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-flip]
     return
     status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     flame-face: text 110 idle-flame font [name: "DejaVu Sans Mono" color: 232.160.180 size: 14] rate 0:0:0.06 on-time [

@@ -6,10 +6,18 @@ The window wears SIGIL now: backdrop `#1A1218`, text `#F0E4EE`,
 muted `#6B6FA8`, imp purple `#C89BE0`, pixie-pink flame `#E8A0B4` —
 one source of truth in `tui.red`, sealed face by face. DejaVu Sans
 Mono throughout, labels small and muted, values mid-weight. Buttons
-are flat base faces, no native chrome: conjure purple with dark bold
-text, quit dark with muted text, enhance dark with purple state text.
-The printed frame keeps its oracle-pinned SGRs — the window and the
-terminal match in spirit, byte-exactness wins over hue.
+stay native with themed type (see below): conjure dark, quit muted,
+enhance purple state text. The printed frame keeps its oracle-pinned
+SGRs — the window and the terminal match in spirit, byte-exactness
+wins over hue.
+
+**Buttons, honestly told.** The theme pass briefly made all three
+buttons flat base faces. Then a real quit-click did nothing — twice —
+and back it went. Caveat, because the first conclusion was wrong: a
+coordinate sweep later closed the window at x=440; my clicks had
+missed at 390. So base-face real-click delivery is *unproven*, not
+broken — and native delivery is proven twice (weeks of conjure
+clicks, plus the sweep). Native it is.
 
 **Steps counted.** A purple number beside the fader, live: slider
 `on-change` fires on drags *and* programmatic sets (hazard 66), so

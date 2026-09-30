@@ -84,7 +84,8 @@ say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
 say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 
 ; ── F: the three buttons are there — conjure, quit, enhance ───────
-; Flat base faces now, not native buttons: match by their own words.
+; Native buttons (base faces never receive real clicks): type and
+; word both have to match.
 n-btn: 0
 conjure?: false
 quit?: false
@@ -95,9 +96,9 @@ foreach f pane [
     ][
         either (t = none) [
         ][
-            if ((t = "conjure")) [n-btn: n-btn + 1  conjure?: true]
-            if ((t = "quit")) [n-btn: n-btn + 1  quit?: true]
-            if ((find t "enhance") <> none) [n-btn: n-btn + 1  enh?: true]
+            if ((f/type = 'button) and ((t = "conjure"))) [n-btn: n-btn + 1  conjure?: true]
+            if ((f/type = 'button) and ((t = "quit"))) [n-btn: n-btn + 1  quit?: true]
+            if ((f/type = 'button) and ((find t "enhance") <> none)) [n-btn: n-btn + 1  enh?: true]
         ]
     ]
 ]
@@ -189,9 +190,10 @@ say "S2 hand-name: " [either (((n1 = "SDXL") and (n2 = "turbo")) and (n3 = "SDXL
 say "   roundtrip: " [(rejoin [hh " -> " n1 "/" n2 "/" n3])]
 
 ; ── V: the house palette holds the faces ───────────────────────────
-; Backdrop, conjure fill, flame pink, mono name — SIGIL §3 in tuples.
-say "V theme: " [either ((((mold win/color) = "26.18.24") and ((mold conjure-btn/color) = "200.155.224")) and (((mold flame-face/font/color) = "232.160.180") and ((mold status-face/font/name) = {"DejaVu Sans Mono"}))) ["SEALED"]["BROKEN"]]
-say "   house: " [(rejoin [(mold win/color) " " (mold conjure-btn/color) " " (mold flame-face/font/color)])]
+; Backdrop, conjure's dark text, flame pink, mono name — SIGIL §3.
+; (Native buttons carry no bg color; their theme is the typeface.)
+say "V theme: " [either ((((mold win/color) = "26.18.24") and ((mold conjure-btn/font/color) = "26.18.24")) and (((mold flame-face/font/color) = "232.160.180") and ((mold status-face/font/name) = {"DejaVu Sans Mono"}))) ["SEALED"]["BROKEN"]]
+say "   house: " [(rejoin [(mold win/color) " " (mold conjure-btn/font/color) " " (mold flame-face/font/color)])]
 
 ; ── U: the steps number tracks the fader ─────────────────────────────
 step-slider/data: 40%
@@ -214,7 +216,7 @@ foreach f pane [
     t2: try [f/text]
     either error? t2 [
     ][
-        if ((t2 = "quit")) [quit-btn: f]
+        if ((f/type = 'button) and ((t2 = "quit"))) [quit-btn: f]
     ]
 ]
 either quit-btn [
