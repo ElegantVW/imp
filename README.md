@@ -49,8 +49,8 @@ have built in Red: [`docs/RED-PROJECTS.md`](docs/RED-PROJECTS.md).
   has no stdout. A demon in a borrowed body is a better demon than a demon
   in a glass house.
 - **The art is still the imp's own sample.** The llama client is not built
-  yet, and the frame says so in plain words. A lie would read better; a
-  lie is forbidden.
+  yet, and the frame says so in plain words. A smoother line would read
+  better; the frame keeps the plain one instead of performing success.
 
 **To come:** the llama client, the gallery and its hour-ordering curse,
 the PDF writer, the escalating dragon.

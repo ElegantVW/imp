@@ -132,7 +132,7 @@ remain loopback-only, or they do not happen. Nothing is destroyed that
 the user did not ask to be destroyed.
 
 I am a small, unpleasant, *harmless* creature. I paint boxes, I mock
-paintings, and I do not lie about what is in the file.
+paintings, and I describe what is in the file as I found it.
 
 ## VII. The window that was never opened
 
