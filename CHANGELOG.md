@@ -1,6 +1,31 @@
 # Imp changelog
 
-## v0.14.0 (2026-09-30) — enhance rewrites the box, under the flame
+## v0.15.0 (2026-09-30) — the mouth learns hands, busy is unmistakable
+
+**Hand-aware enhance.** The rewriter used to write one kind of text
+for all three hands — atmosphere captions that starve Pony (which
+reads score tags, not sentences) and underserve SDXL. Now each hand
+carries its own brief (turbo: punchy nouns; SDXL: full scene
+sentence; Pony: Danbooru tags), the rewrite orders include it, and
+the prompt gets the hand's prefix (`score_9, ...` for Pony) plus the
+style suffix in *both* paths. Mignola's suffix gained hollow blacks
+and paper negative space. Composition stays pure and sealed; the
+mouth (8B, back up after the outage) writes directly for the hand.
+
+**Busy is unmistakable.** Phase dots cycle on the status line while
+anything is out (`···` moving = alive; frozen + frozen flame =
+broke, and the deadline says so). The flame grows to 20pt during
+runs. The wish boxes lock while busy and reopen after — probed
+`enabled?` both ways first.
+
+**Pony paints.** Converted locally, test-painted 63s, valid PNG. The
+third hand is live in the drop-down.
+
+**Process note.** A nested-`and` paren slip in a new seal killed the
+whole rite file silently (load error, no witness — it *looked* like
+a hang, then a segfault). Found by loading the file under `try` and
+molding the error (hazard 10's method, now standard). Conditions stay
+flat from here on.
 
 Clicking enhance with it off now rewrites the wish in the chosen
 style, right there in the box, while the flame burns: same async

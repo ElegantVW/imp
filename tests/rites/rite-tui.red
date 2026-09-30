@@ -84,8 +84,9 @@ say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
 say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 
 ; ── F: the three buttons are there — conjure, quit, enhance ───────
-; Native buttons (base faces never receive real clicks): type and
-; word both have to match.
+; Match by their own words. (A type check rode along here briefly;
+; an unguarded /type read is a death sentence if any pane element
+; lacks the facet — text-only, inside try, is the shape that lives.)
 n-btn: 0
 conjure?: false
 quit?: false
@@ -96,9 +97,9 @@ foreach f pane [
     ][
         either (t = none) [
         ][
-            if ((f/type = 'button) and ((t = "conjure"))) [n-btn: n-btn + 1  conjure?: true]
-            if ((f/type = 'button) and ((t = "quit"))) [n-btn: n-btn + 1  quit?: true]
-            if ((f/type = 'button) and ((find t "enhance") <> none)) [n-btn: n-btn + 1  enh?: true]
+            if ((t = "conjure")) [n-btn: n-btn + 1  conjure?: true]
+            if ((t = "quit")) [n-btn: n-btn + 1  quit?: true]
+            if ((find t "enhance") <> none) [n-btn: n-btn + 1  enh?: true]
         ]
     ]
 ]
@@ -156,6 +157,7 @@ out-o: con-enhance
 say "O enhance-spawns: " [either (((out-o) = "the mouth is rewriting...") and ((rw-face/text) = "1")) ["SEALED"]["BROKEN"]]
 say "   said: " [(rejoin [out-o " rw=" rw-face/text])]
 rw-face/text: "0"
+con-calm
 call/wait/shell "rm -f /dev/shm/imp/con-rc.txt"
 
 ; ── O2: empty wish rewrites nothing and spawns nothing ───────────────
@@ -223,11 +225,28 @@ con-steps-label
 say "   direct: " [steps-num/text]
 
 ; ── X: pulse brightens for the run, dims when it lands ───────────────
+; Flare also locks the wish boxes; calm reopens them. Two short seals
+; instead of one nested monster — an unbalanced paren here is a total
+; silent death (measured), so conditions stay flat.
 con-flare
 flare-ok: ((mold status-face/font/color) = "240.228.238")
-flare-ok2: (flame-face/font/size = 16)
+flare-ok2: (flame-face/font/size = 20)
+flare-ok3: ((wish-face/enabled? = false) and (size-custom/enabled? = false))
+say "X pulse-lit: " [either ((flare-ok and flare-ok2) and flare-ok3) ["SEALED"]["BROKEN"]]
 con-calm
-say "X pulse: " [either ((flare-ok and flare-ok2) and (((mold status-face/font/color) = "107.111.168") and (flame-face/font/size = 14))) ["SEALED"]["BROKEN"]]
+dim-ok: ((mold status-face/font/color) = "107.111.168")
+dim-ok2: (flame-face/font/size = 14)
+dim-ok3: ((wish-face/enabled? = true) and (size-custom/enabled? = true))
+say "X pulse-dim: " [either ((dim-ok and dim-ok2) and dim-ok3) ["SEALED"]["BROKEN"]]
+
+; ── Y: the dots cycle · → ·· → ··· → · ───────────────────────────────
+dot-face/text: "2"
+d1: con-dots
+d2: con-dots
+d3: con-dots
+d4: con-dots
+say "Y dots: " [either ((((d1 = " ·") and (d2 = " ··")) and (d3 = " ···")) and (d4 = " ·")) ["SEALED"]["BROKEN"]]
+say "   cycled: " [(rejoin [d1 d2 d3 d4])]
 ; Synthetic clicks do not inject (hazard 61), so dispatch the actor
 ; the way the event loop would: do-actor on the quit face, then pump.
 quit-btn: none
@@ -235,7 +254,7 @@ foreach f pane [
     t2: try [f/text]
     either error? t2 [
     ][
-        if ((f/type = 'button) and ((t2 = "quit"))) [quit-btn: f]
+        if ((t2 = "quit")) [quit-btn: f]
     ]
 ]
 either quit-btn [

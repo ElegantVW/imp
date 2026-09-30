@@ -61,6 +61,9 @@ say "   names: " [(rejoin [CON-STYLE-NAME "/" CON-HAND-NAME " said: " begin-out]
 ; value global in any case (hazard 65). repeat calls must all hold.
 say "J2 name-repeat: " [either ((((con-get-style-name 3) = "Mignola") and ((con-get-style-name 1) = "Photography")) and (((con-get-hand-name 2) = "SDXL") and ((con-get-hand-name 1) = "turbo"))) ["SEALED"]["BROKEN"]]
 
+; ── Pony reads score tags, everyone else reads prose ──────────────────
+say "J3 hand-prefix: " [either (((con-hand-prefix 3) = "score_9, score_8_up, score_7_up, ") and ((con-hand-prefix 1) = "")) ["SEALED"]["BROKEN"]]
+
 say "E single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/conjure-lib-tmp.txt rejoin led

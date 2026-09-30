@@ -170,7 +170,7 @@ con-style-suffix: func [si [integer!] /local out][
 CON-STYLES: [
     ["Photography" "a photograph, realistic light and natural colour" ", photorealistic, natural lighting, 35mm photograph, sharp focus"]
     ["Pixel art" "retro pixel art, crisp pixels and a limited palette" ", pixel art, 16-bit, crisp pixels, limited palette"]
-    ["Mignola" "a mike mignola comic panel, heavy black shadows like woodcut ink" ", mike mignola style, heavy black shadows, woodcut ink, stark contrast"]
+    ["Mignola" "a mike mignola comic panel, heavy black shadows like woodcut ink" ", mike mignola style, heavy black shadows, hollow black shapes, white paper negative space, woodcut ink"]
     ["3D animation" "a 3d animated film still, soft volumetric light" ", 3d animated film still, soft volumetric light, stylized, high detail"]
     ["Hentai" "an anime-style illustration, cel shaded with clean line art" ", anime style illustration, cel shaded, clean line art, vibrant colours"]
     ["Anime" "an anime still, cel shaded with a detailed background" ", anime style, cel shaded, detailed background"]
@@ -183,9 +183,9 @@ foreach con-st CON-STYLES [append CON-STYLE-NAMES pick con-st 1]
 ; the launcher's env (sdxl=, pony=), because paths are the harness's
 ; business, not the program's. turbo's file is the standing default.
 CON-HANDS: [
-    ["turbo" 4 1]
-    ["SDXL" 20 7]
-    ["Pony" 25 7]
+    ["turbo" 4 1 "Keep it under 30 words, punchy, concrete nouns only."]
+    ["SDXL" 20 7 "One flowing sentence: subject, setting, weather, light, mood."]
+    ["Pony" 25 7 "Comma-separated Danbooru-style tags, then one short scene phrase."]
 ]
 CON-HAND: 1
 CON-HAND-NAME: "turbo"
@@ -210,6 +210,18 @@ con-hand-steps: func [hi [integer!] /local out][
 con-hand-cfg: func [hi [integer!] /local out][
     out: con-hand-pick hi 3
     either (out = none) [out: 1][]
+    out
+]
+con-hand-brief: func [hi [integer!] /local out][
+    out: con-hand-pick hi 4
+    either (out = none) [out: "One flowing sentence."][
+    ]
+    out
+]
+; Pony reads score tags, not sentences. Everyone else reads prose.
+con-hand-prefix: func [hi [integer!] /local out][
+    out: ""
+    if (hi = 3) [out: "score_9, score_8_up, score_7_up, "]
     out
 ]
 con-hand-file: func [hi [integer!] /local out][
@@ -392,7 +404,7 @@ con-flatten: func [s [string!] /local out][
 ; ── the mortal's own prompt, styled. wish + suffix, flattened. pure:
 ; no IO, no spawn, so a rite can seal it without a GPU.
 con-compose: func [wish [string!] si [integer!] /local out][
-    out: con-flatten rejoin [wish con-style-suffix si]
+    out: con-flatten rejoin [con-hand-prefix CON-HAND wish con-style-suffix si]
     out
 ]
 
@@ -594,7 +606,7 @@ con-ask-start: func [orders [string!] user [string!] max [integer!] /local body 
 ; flight at a time — the TUI guards both directions), but the answer
 ; lands in the wish box, not the hand. Returns at once; the poller
 ; collects. "ok:<text>" carries the sentence, "fail:" the truth.
-con-rewrite-start: func [wish [string!] si [integer!] /local out orders entry trimmed][
+con-rewrite-start: func [wish [string!] si [integer!] hi [integer!] /local out orders entry trimmed][
     out: "fail: speak a wish first."
     trimmed: try [copy wish]
     either error? trimmed [
@@ -610,11 +622,15 @@ con-rewrite-start: func [wish [string!] si [integer!] /local out orders entry tr
                 either (si = none) [si: 1][
                     either ((si < 1) or (si > length? CON-STYLES)) [si: 1][]
                 ]
+                either (hi = none) [hi: 1][
+                    either ((hi < 1) or (hi > length? CON-HANDS)) [hi: 1][]
+                ]
                 entry: con-style-entry si
                 orders: rejoin [
-                    "You rewrite image prompts. Given a mortal's wish, return ONE improved sentence in this style: "
+                    "You rewrite image prompts. Given a mortal's wish, return ONE improved prompt in this style: "
                     pick entry 2
-                    ". Under 200 characters. No quotation marks, no preamble, just the sentence. /no_think"
+                    " " con-hand-brief hi
+                    ". Under 200 characters. No quotation marks, no preamble, just the prompt. /no_think"
                 ]
                 con-ask-start orders trimmed 120
                 out: "the mouth is rewriting..."
@@ -660,9 +676,9 @@ con-advance-mouth-art: func [rc [integer!] /local out raw][
         con-say "the mouth said nothing. using a plain prompt."
         con-prompt: con-compose con-wish CON-STYLE
     ][
-        ; the mouth writes; the style still applies. enhance chooses
-        ; who writes the sentence, never whether the style holds.
-        con-prompt: con-flatten rejoin [raw con-style-suffix CON-STYLE]
+        ; the mouth writes; the style still applies, in the hand's own
+        ; tongue. enhance chooses who writes, never whether style holds.
+        con-prompt: con-flatten rejoin [con-hand-prefix CON-HAND raw con-style-suffix CON-STYLE]
     ]
     write CON-F-PROMPT con-prompt
     con-say rejoin ["prompt " mold con-prompt]
@@ -798,7 +814,7 @@ con-begin: func [wish sz si enh hi /local out trimmed n orders][
                         con-spawn con-cmd
                         out: "the hand is painting..."
                     ][
-                        orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " con-style-directive si]
+                        orders: rejoin [CON-LLM-SYS-ART " Paint it in this style: " con-style-directive si " " con-hand-brief CON-HAND]
                         CON-PHASE: "mouth-art"
                         con-say "the mouth is asked what to paint"
                         con-ask-start orders con-wish 160
@@ -882,7 +898,7 @@ con-run-after-hand: func [/local out][
 con-run-paint: func [/local out rc][
     out: "fail: the hand refused to paint."
     con-say "the mouth is asked what to paint"
-    con-prompt-raw: con-ask CON-LLM-SYS-ART con-wish 160
+    con-prompt-raw: con-ask rejoin [CON-LLM-SYS-ART " " con-hand-brief CON-HAND] con-wish 160
     con-prompt: either (length? con-prompt-raw) = 0 [
         con-say "the mouth said nothing. using a plain prompt."
         con-compose con-wish CON-STYLE

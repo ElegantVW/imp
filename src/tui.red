@@ -181,6 +181,7 @@ con-press: func [/local out sz-text n enh hi][
                         out: status-face/text
                         either ((con-kind status-face/text) = "fail") [
                             busy-face/text: "0"
+                            con-calm
                             flame-face/text: idle-flame
                             out: status-face/text
                         ][
@@ -195,17 +196,35 @@ con-press: func [/local out sz-text n enh hi][
 ]
 ; ── pulse. Brighten for the run, dim when it lands. Named, so a
 ; rite can call them without a GPU: the pattern (face/font/color,
-; face/font/size) is the vendor TUI's own.
+; face/font/size) is the vendor TUI's own. Flare also locks the wish
+; boxes — typing mid-run changes nothing, so the UI says so.
 con-flare: func [/local out][
     status-face/font/color: IMP-TEXT
-    flame-face/font/size: 16
+    flame-face/font/size: 20
+    wish-face/enabled?: no
+    size-custom/enabled?: no
     out: "lit"
     out
 ]
 con-calm: func [/local out][
     status-face/font/color: IMP-MUTE
     flame-face/font/size: 14
+    wish-face/enabled?: yes
+    size-custom/enabled?: yes
     out: "dim"
+    out
+]
+; ── the dots. Busy proof that moves: " ·" → " ··" → " ···" → " ·".
+; Count lives in dot-face (state-in-faces law); frozen dots + frozen
+; flame = the tell for "broke", and the deadline turns it into fail:.
+con-dots: func [/local n out][
+    out: " ·"
+    n: try [to integer! dot-face/text]
+    either error? n [n: 0][]
+    n: n + 1
+    if (n > 2) [n: 0]
+    dot-face/text: form n
+    out: pick [" ·" " ··" " ···"] (n + 1)
     out
 ]
 ; ── steps readout. The label beside the fader, in imp purple. Runs
@@ -229,7 +248,7 @@ con-quit: func [/local out][
 ; in the chosen style, right now, under the flame — not at conjure
 ; time. Clicking with it on just switches it off; the box keeps
 ; whatever it holds. Named, like the press, so a rite walks it.
-con-enhance: func [/local out][
+con-enhance: func [/local out rwh][
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -248,9 +267,14 @@ con-enhance: func [/local out][
                         status-face/text: "speak a wish first."
                         out: "speak a wish first."
                     ][
+                        rwh: hand-dd/selected
+                        either (rwh = none) [rwh: 1][
+                            either ((rwh < 1) or (rwh > length? CON-HANDS)) [rwh: 1][]
+                        ]
                         rw-face/text: "1"
+                        con-flare
                         flame-face/text: pick CON-FLAMES 1
-                        out: con-rewrite-start wish-face/text style-dd/selected
+                        out: con-rewrite-start wish-face/text style-dd/selected rwh
                         status-face/text: form out
                         out: status-face/text
                         either ((con-kind status-face/text) = "fail") [
@@ -387,6 +411,7 @@ win: layout/flags [
     rw-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
     status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    dot-face: text 10 "0" font [color: 26.18.24 size: 1]
     flame-face: text 110 idle-flame font [name: "DejaVu Sans Mono" color: 232.160.180 size: 14] rate 0:0:0.06 on-time [
         either ((busy-face/text = "1") or ((rw-face/text) = "1")) [
             flame-face/text: con-next-flame flame-face/text
@@ -404,6 +429,7 @@ win: layout/flags [
                         con-calm
                         flame-face/text: idle-flame
                     ][
+                        status-face/text: rejoin [status-face/text con-dots]
                     ]
                 ]
             ][
@@ -412,11 +438,14 @@ win: layout/flags [
                     wish-face/text: copy skip status-face/text 3
                     enh-btn/text: "enhance: on"
                     rw-face/text: "0"
+                    con-calm
                     status-face/text: "rewritten. conjure when ready."
                 ][
                     either ((find status-face/text "fail:") = none) [
+                        status-face/text: rejoin [status-face/text con-dots]
                     ][
                         rw-face/text: "0"
+                        con-calm
                     ]
                 ]
             ]
