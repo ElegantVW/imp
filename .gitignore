@@ -36,3 +36,12 @@ bytes-probe.bin
 # disk; they just stop being versioned.
 /.retired/
 /.probes/
+
+# build artifacts: the compiled one-shot and the toolchain droppings.
+# rebuilt by ./build.sh console; never versioned.
+/imp-console
+/libRedRT-defs.r
+/libRedRT-include.red
+/libRedRT.so
+/.console-build
+/.console-build.red
