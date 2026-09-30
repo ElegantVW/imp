@@ -273,7 +273,12 @@ install_imp() {
   mkdir -p "$HOME/bin"
   ln -sfn "$ROOT/scripts/imp" "$HOME/bin/imp"
   printf 'imp: launcher → %s\n' "$HOME/bin/imp"
-  printf 'imp: program  → %s (pure Red)\n' "$ROOT/src/conjure.red"
+  printf 'imp: program  → %s (compiled Red)\n' "$ROOT/imp-console"
+  # The one-shot door is a binary, not a script: forge it if absent.
+  # Unversioned by law (see .gitignore); first forge takes minutes.
+  if [[ ! -x "$ROOT/imp-console" ]]; then
+    console
+  fi
   # The link is the whole point, so check it rather than assume it. A
   # broken link is a silent `imp: command not nothing` at 2am.
   if [[ -L "$HOME/bin/imp" ]] && [[ -x "$HOME/bin/imp" ]]; then
