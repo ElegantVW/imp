@@ -133,7 +133,11 @@ con-press: func [/local out sz-text n enh hi][
         status-face/text: "already painting."
         out: "already painting."
     ][
-        either (wish-face/text = none) [
+        either ((rw-face/text) = "1") [
+            status-face/text: "still rewriting."
+            out: "still rewriting."
+        ][
+            either (wish-face/text = none) [
             status-face/text: "speak a wish first."
             out: "speak a wish first."
         ][
@@ -186,6 +190,7 @@ con-press: func [/local out sz-text n enh hi][
             ]
         ]
     ]
+    ]
     out
 ]
 ; ── pulse. Brighten for the run, dim when it lands. Named, so a
@@ -220,15 +225,47 @@ con-quit: func [/local out][
     out: "closed"
     out
 ]
-; ── the enhance switch. One face: the button text IS the state.
-con-flip: func [/local out][
-    out: "enhance: on"
-    either ((enh-btn/text) = "enhance: off") [
-        enh-btn/text: "enhance: on"
-        out: "enhance: on"
+; ── enhance, live. Clicking with enhance off rewrites the wish box
+; in the chosen style, right now, under the flame — not at conjure
+; time. Clicking with it on just switches it off; the box keeps
+; whatever it holds. Named, like the press, so a rite walks it.
+con-enhance: func [/local out][
+    out: "already painting."
+    either (busy-face/text = "1") [
+        status-face/text: "already painting."
+        out: "already painting."
     ][
-        enh-btn/text: "enhance: off"
-        out: "enhance: off"
+        either ((rw-face/text) = "1") [
+            status-face/text: "still rewriting."
+            out: "still rewriting."
+        ][
+            either ((enh-btn/text) = "enhance: off") [
+                either (wish-face/text = none) [
+                    status-face/text: "speak a wish first."
+                    out: "speak a wish first."
+                ][
+                    either ((length? wish-face/text) = 0) [
+                        status-face/text: "speak a wish first."
+                        out: "speak a wish first."
+                    ][
+                        rw-face/text: "1"
+                        flame-face/text: pick CON-FLAMES 1
+                        out: con-rewrite-start wish-face/text style-dd/selected
+                        status-face/text: form out
+                        out: status-face/text
+                        either ((con-kind status-face/text) = "fail") [
+                            rw-face/text: "0"
+                            out: status-face/text
+                        ][
+                        ]
+                    ]
+                ]
+            ][
+                enh-btn/text: "enhance: off"
+                status-face/text: "enhance off. your words, styled."
+                out: "enhance: off"
+            ]
+        ]
     ]
     out
 ]
@@ -346,25 +383,41 @@ win: layout/flags [
     return
     text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     style-dd: drop-down 150 data CON-STYLE-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
-    enh-btn: button 120 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-flip]
+    enh-btn: button 120 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-enhance]
+    rw-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
     status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     flame-face: text 110 idle-flame font [name: "DejaVu Sans Mono" color: 232.160.180 size: 14] rate 0:0:0.06 on-time [
-        either (busy-face/text = "1") [
+        either ((busy-face/text = "1") or ((rw-face/text) = "1")) [
             flame-face/text: con-next-flame flame-face/text
-            status-face/text: form con-tick
-            either ((con-kind status-face/text) = "ok") [
-                busy-face/text: "0"
-                con-calm
-                pic-face/image: CON-PIC
-                status-face/text: "ready. wish again."
-                flame-face/text: idle-flame
-            ][
-                either ((con-kind status-face/text) = "fail") [
+            either (busy-face/text = "1") [
+                status-face/text: form con-tick
+                either ((con-kind status-face/text) = "ok") [
                     busy-face/text: "0"
                     con-calm
+                    pic-face/image: CON-PIC
+                    status-face/text: "ready. wish again."
                     flame-face/text: idle-flame
                 ][
+                    either ((con-kind status-face/text) = "fail") [
+                        busy-face/text: "0"
+                        con-calm
+                        flame-face/text: idle-flame
+                    ][
+                    ]
+                ]
+            ][
+                status-face/text: form con-rewrite-tick
+                either ((copy/part status-face/text 3) = "ok:") [
+                    wish-face/text: copy skip status-face/text 3
+                    enh-btn/text: "enhance: on"
+                    rw-face/text: "0"
+                    status-face/text: "rewritten. conjure when ready."
+                ][
+                    either ((find status-face/text "fail:") = none) [
+                    ][
+                        rw-face/text: "0"
+                    ]
                 ]
             ]
         ][

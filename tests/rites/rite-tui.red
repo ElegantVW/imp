@@ -144,12 +144,31 @@ size-custom/text: ""
 say "N styles: " [either ((length? style-dd/data) = 7) ["SEALED"]["BROKEN"]]
 say "   styles: " [(length? style-dd/data) "  open: " style-dd/text]
 
-; ── O: enhance flips off and back, through its own words ────────────
-con-flip
-mid-enh: enh-btn/text
-con-flip
-say "O enhance-flip: " [either (((mid-enh) = "enhance: off") and ((enh-btn/text) = "enhance: on")) ["SEALED"]["BROKEN"]]
-say "   flipped: " [(rejoin [mid-enh " -> " enh-btn/text])]
+; ── O: enhance click starts a rewrite, fast, without waiting ───────
+; con-enhance spawns (async, returns at once). No waiting for the
+; mouth here: rw-face "1" plus the busy message IS the seal. The
+; orphaned curl finishes alone; the next spawn deletes its rc first.
+; Tidy up after: rw back to 0, rc file gone either way.
+wish-face/text: "a lighthouse in a storm"
+enh-btn/text: "enhance: off"
+style-dd/selected: 3
+out-o: con-enhance
+say "O enhance-spawns: " [either (((out-o) = "the mouth is rewriting...") and ((rw-face/text) = "1")) ["SEALED"]["BROKEN"]]
+say "   said: " [(rejoin [out-o " rw=" rw-face/text])]
+rw-face/text: "0"
+call/wait/shell "rm -f /dev/shm/imp/con-rc.txt"
+
+; ── O2: empty wish rewrites nothing and spawns nothing ───────────────
+wish-face/text: ""
+out-o2: con-enhance
+say "O2 enhance-empty: " [either (((out-o2) = "speak a wish first.") and ((rw-face/text) = "0")) ["SEALED"]["BROKEN"]]
+wish-face/text: "a lighthouse in a storm"
+
+; ── O3: conjure waits while a rewrite is out ─────────────────────────
+rw-face/text: "1"
+out-o3: con-press
+say "O3 press-waits: " [either (((out-o3) = "still rewriting.") and ((busy-face/text) = "0")) ["SEALED"]["BROKEN"]]
+rw-face/text: "0"
 
 ; ── P: the mortal's prompt carries the style suffix ─────────────────
 ; Pure compose, no spawn: Mignola on a fox.

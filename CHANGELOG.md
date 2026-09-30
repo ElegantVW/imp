@@ -1,5 +1,22 @@
 # Imp changelog
 
+## v0.14.0 (2026-09-30) — enhance rewrites the box, under the flame
+
+Clicking enhance with it off now rewrites the wish in the chosen
+style, right there in the box, while the flame burns: same async
+door as a conjure (one rc file, one flight — conjure waits while a
+rewrite is out and vice versa), same 666s deadline naming the silent
+mouth. Clicking with it on just switches off; the box keeps whatever
+it holds. Conjure paints exactly what the box says — visible and
+editable first.
+
+The slow proof runs the integrated loop: rewrite ("...moonlight
+casting long shadows across the grass", enhance on), then off-paint
+of the rewritten box plus suffix, no second mouth. The prompt file
+the hand ran is the receipt. A dead mouth mid-proof gave
+"fail: the mouth refused." instead of a hang — the truthful-failure
+design validating itself by accident.
+
 ## v0.13.0 (2026-09-30) — the house theme, counted steps, a pulse
 
 The window wears SIGIL now: backdrop `#1A1218`, text `#F0E4EE`,

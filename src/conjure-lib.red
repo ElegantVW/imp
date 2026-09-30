@@ -590,6 +590,69 @@ con-ask-start: func [orders [string!] user [string!] max [integer!] /local body 
     con-spawn c
 ]
 
+; ── wish rewrite. Same async door as a conjure (one rc file, one
+; flight at a time — the TUI guards both directions), but the answer
+; lands in the wish box, not the hand. Returns at once; the poller
+; collects. "ok:<text>" carries the sentence, "fail:" the truth.
+con-rewrite-start: func [wish [string!] si [integer!] /local out orders entry trimmed][
+    out: "fail: speak a wish first."
+    trimmed: try [copy wish]
+    either error? trimmed [
+        out: "fail: speak a wish first."
+    ][
+        either (trimmed = none) [
+            out: "fail: speak a wish first."
+        ][
+            trimmed: con-trim-nl trimmed
+            either (length? trimmed) = 0 [
+                out: "fail: speak a wish first."
+            ][
+                either (si = none) [si: 1][
+                    either ((si < 1) or (si > length? CON-STYLES)) [si: 1][]
+                ]
+                entry: con-style-entry si
+                orders: rejoin [
+                    "You rewrite image prompts. Given a mortal's wish, return ONE improved sentence in this style: "
+                    pick entry 2
+                    ". Under 200 characters. No quotation marks, no preamble, just the sentence. /no_think"
+                ]
+                con-ask-start orders trimmed 120
+                out: "the mouth is rewriting..."
+            ]
+        ]
+    ]
+    out
+]
+
+; ── rewrite poll. Mirrors con-tick, including the deadline: a mouth
+; that never answers is a silence, not a wait.
+con-rewrite-tick: func [/local out rc raw dt][
+    out: "busy"
+    either ((con-ready?) = "yes") [
+        rc: con-read-rc
+        call/wait/shell rejoin ["rm -f " to string! CON-F-RC]
+        either (rc = 0) [
+            raw: con-parse-reply
+            either (length? raw) = 0 [
+                out: "fail: the mouth said nothing."
+            ][
+                out: rejoin ["ok:" con-flatten raw]
+            ]
+        ][
+            out: "fail: the mouth refused."
+        ]
+    ][
+        dt: to integer! now/time
+        either (con-timed-out? dt) [
+            con-say "timeout phase=mouth-rewrite"
+            out: "fail: the mouth fell silent."
+        ][
+            out: "the mouth is rewriting..."
+        ]
+    ]
+    out
+]
+
 con-advance-mouth-art: func [rc [integer!] /local out raw][
     out: "the hand is painting..."
     raw: con-parse-reply

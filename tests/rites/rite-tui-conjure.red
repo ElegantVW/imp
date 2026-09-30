@@ -10,7 +10,8 @@ Red [Title: "rite-tui-conjure" Needs: View]
 ;   C  the first run finishes and the picture is new (enhance ON)
 ;   D  the window is still open afterwards
 ;   E  a second wish runs to completion in the same window (enhance OFF)
-;   E2 the off-path prompt is mortal words + style suffix, no mouth
+;   E2a the enhance click rewrote the box (mouth, under the flame)
+;   E2 the off-path prompt is rewritten box + style suffix, no 2nd mouth
 ;   H2 the frame names the SDXL hand and its 20 steps
 ;   F  the window is open after that too
 ;
@@ -108,8 +109,45 @@ open1?: "no"
 if screen/pane [open1?: "yes"]
 say "D window-open: " [either (open1? = "yes") ["SEALED"]["BROKEN"]]
 
+; a wish through con-enhance (rewrite, no paint). returns the new box
+; text, or "no" if it never landed. bounded: a silence is a verdict.
+run-enhance: func [w [string!] si [integer!] /local out n][
+    out: "no"
+    wish-face/text: w
+    enh-btn/text: "enhance: off"
+    style-dd/selected: si
+    con-enhance
+    repeat k 5 [do-events/no-wait]
+    either ((rw-face/text) = "1") [
+        n: 0
+        while [(n < 120)][
+            n: n + 1
+            call/wait/shell "sleep 0.5"
+            repeat k 5 [do-events/no-wait]
+            if ((rw-face/text) = "0") [
+                out: wish-face/text
+                break
+            ]
+        ]
+    ][
+        out: "no press never started"
+    ]
+    out
+]
+
 fl2: copy []
-r2: run-wish "a fox asleep in a field of white flowers" fl2 "off" 3 2
+; run2 paints a REWRITTEN box: enhance-click first (mouth rewrites),
+; then conjure with enhance off (box + suffix, no second mouth).
+box2: run-enhance "a fox asleep in a field of white flowers" 3
+say "E2a rewritten: " [either ((box2 <> "a fox asleep in a field of white flowers") and ((box2 <> "no") and ((box2 <> "no press never started") and ((length? box2) > 0)))) ["SEALED"]["BROKEN"]]
+say "   box: " [box2]
+say "   enh: " [enh-btn/text]
+enh-btn/text: "enhance: off"
+r2: either ((box2 = "no") or ((box2 = "no press never started") or ((box2 = "a fox asleep in a field of white flowers")))) [
+    "no rewrite, no paint"
+][
+    run-wish box2 fl2 "off" 3 2
+]
 say "E second-finished: " [either (r2 = "yes") ["SEALED"]["BROKEN"]]
 say "   run2: " [r2 "  status: " status-face/text]
 
@@ -117,14 +155,18 @@ say "   run2: " [r2 "  status: " status-face/text]
 say "H0 globals: " [either ((CON-HAND-NAME = "SDXL") and (CON-STYLE-NAME = "Mignola") and (CON-HAND = 2) and (CON-STYLE = 3) and (CON-ENH = "off")) ["SEALED"]["BROKEN"]]
 say "   globals: " [(rejoin [CON-HAND-NAME "/" CON-STYLE-NAME " " CON-HAND "/" CON-STYLE " " CON-ENH])]
 
-; the off-path prompt is the mortal's words plus the Mignola suffix —
-; no mouth anywhere in it. read the file the hand actually ran.
-pr2: try [read %/dev/shm/imp/conjure-prompt.txt]
-either error? pr2 [
-    say "E2 prompt-styled: BROKEN, no prompt file"
+; the off-path prompt is the rewritten box plus the Mignola suffix —
+; no second mouth anywhere in it. read the file the hand ran.
+either (r2 = "yes") [
+    pr2: try [read %/dev/shm/imp/conjure-prompt.txt]
+    either error? pr2 [
+        say "E2 prompt-styled: BROKEN, no prompt file"
+    ][
+        say "E2 prompt-styled: " [either ((((find pr2 "mignola") <> none) and ((find pr2 box2) <> none)) and ((length? pr2) > 0)) ["SEALED"]["BROKEN"]]
+        say "   prompt: " [pr2]
+    ]
 ][
-    say "E2 prompt-styled: " [either (((find pr2 "mignola") <> none) and ((find pr2 "a fox asleep") <> none)) ["SEALED"]["BROKEN"]]
-    say "   prompt: " [pr2]
+    say "E2 prompt-styled: " ["SKIPPED, no paint"]
 ]
 
 ; the frame names the hand that painted and the steps it took.
