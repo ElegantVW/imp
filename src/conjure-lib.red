@@ -540,47 +540,31 @@ con-forge-frame: func [/local out][
             out: "fail: the grid would not lie down."
         ][
             con-say rejoin ["grid " mold length? con-grid]
-            con-panel: copy []
             con-gutter: subtract IMP-WIDTH 4
-            append con-panel top-border "Imp" IMP-WIDTH
-            con-lanes: sever con-grid "^/"
-            con-filler: repeat-chars " " con-gutter
-            while [(length? con-lanes) < CON-ROWS][append con-lanes con-filler]
-            either (length? con-lanes) > CON-ROWS [
-                con-lanes: copy/part con-lanes CON-ROWS
-            ][
-                con-i: 0
-                while [con-i < (length? con-lanes)][
-                    append con-panel rejoin [PINK "│" OFF " " pad-to pick con-lanes (con-i + 1) con-gutter OFF " " PINK "│" OFF]
-                    con-i: con-i + 1
-                ]
-            ]
-            append con-panel divider "Conjured" IMP-WIDTH
-            append con-panel row rejoin ["> " con-wish] IMP-WIDTH SILVER
+            ; ── the frame, as data. The spec below is the story; the
+            ; dialect (frame-rows) is the teller. Reorder a divider, add
+            ; a row, change a colour — here, and nowhere else.
+            con-spec: copy []
+            append/only con-spec reduce ['border "Imp" IMP-WIDTH]
+            append/only con-spec reduce ['lanes con-grid CON-ROWS con-gutter]
+            append/only con-spec reduce ['divider "Conjured" IMP-WIDTH]
+            append/only con-spec reduce ['row rejoin ["> " con-wish] IMP-WIDTH SILVER]
             either (length? con-mock) = 0 [
-                append con-panel row "the dragon declined to comment." IMP-WIDTH MUTE
+                append/only con-spec reduce ['row "the dragon declined to comment." IMP-WIDTH MUTE]
             ][
-                append con-panel row con-mock IMP-WIDTH ROSE
+                append/only con-spec reduce ['row con-mock IMP-WIDTH ROSE]
             ]
-            append con-panel divider "Provenance" IMP-WIDTH
-            append con-panel row rejoin ["mouth: " CON-LLM] IMP-WIDTH MUTE
-            append con-panel row rejoin ["style: " CON-STYLE-NAME] IMP-WIDTH MUTE
-            append con-panel row rejoin ["enhance: " CON-ENH] IMP-WIDTH MUTE
-            append con-panel row rejoin [
+            append/only con-spec reduce ['divider "Provenance" IMP-WIDTH]
+            append/only con-spec reduce ['row rejoin ["mouth: " CON-LLM] IMP-WIDTH MUTE]
+            append/only con-spec reduce ['row rejoin ["style: " CON-STYLE-NAME] IMP-WIDTH MUTE]
+            append/only con-spec reduce ['row rejoin ["enhance: " CON-ENH] IMP-WIDTH MUTE]
+            append/only con-spec reduce ['row rejoin [
                 "hand:  " CON-HAND-NAME " " to string! CON-W "x" to string! CON-H
                 " " to string! CON-STEPS "sp cfg" to string! CON-CFG
-            ] IMP-WIDTH MUTE
-            append con-panel row "forged in red. no C, no python." IMP-WIDTH MUTE
-            append con-panel bottom-border IMP-WIDTH
-            con-parts: copy []
-            con-pk: 1
-            con-pn: length? con-panel
-            while [con-pk <= con-pn][
-                append con-parts pick con-panel con-pk
-                if (con-pk < con-pn) [append con-parts "^/"]
-                con-pk: con-pk + 1
-            ]
-            con-frame: rejoin con-parts
+            ] IMP-WIDTH MUTE]
+            append/only con-spec reduce ['row "forged in red. no C, no python." IMP-WIDTH MUTE]
+            append/only con-spec reduce ['footer IMP-WIDTH]
+            con-frame: frame-assemble frame-rows con-spec
             write CON-F-TMP con-frame
             con-say rejoin ["frame-bytes " mold length? con-frame]
             rename %/dev/shm/imp/frame.tmp %/dev/shm/imp/frame

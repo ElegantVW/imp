@@ -185,13 +185,7 @@ tui() {
 smoke() {
   echo "imp: smoke"
   substrate
-  local f stale=false
-  for f in src/console.red src/conjure-lib.red src/core.red src/frame.red src/forge.red; do
-    if [[ ! -x "$ROOT/imp-console" ]] || [[ "$ROOT/$f" -nt "$ROOT/imp-console" ]]; then
-      stale=true
-    fi
-  done
-  if $stale; then console; fi
+  ensure_binary
   local out
   out="$(mktemp)"
   if "$HOME/bin/imp" "a lighthouse in a storm" > "$out" 2>"$out.err"; then
@@ -313,10 +307,45 @@ console() {
   printf 'imp:   imp-console (%s bytes)\n' "$(wc -c < "$ROOT/imp-console" | tr -d ' ')"
 }
 
+# ── binary staleness: rebuild if any source outruns it ───────────────
+binary-fresh() {
+  [[ -x "$ROOT/imp-console" ]] || return 1
+  local f
+  for f in src/console.red src/conjure-lib.red src/core.red src/frame.red src/forge.red; do
+    [[ "$ROOT/$f" -nt "$ROOT/imp-console" ]] && return 1
+  done
+  return 0
+}
+ensure_binary() {
+  binary-fresh || console
+}
+
+# ── selftest: the syscall path, sealed by a binary that can run it ──
+# R/S is compile-only — rites run the interpreted console where
+# `routine` does not exist. So the seal lives here: redirect the
+# binary's stdout/stderr to files and check the bytes arrived.
+selftest() {
+  echo "imp: selftest (R/S syscalls, compiled)"
+  ensure_binary
+  local o e
+  o="$(mktemp)" e="$(mktemp)"
+  "$ROOT/imp-console" --selftest > "$o" 2> "$e"
+  local ok=true
+  if [[ "$(cat "$o")" != "SELFTEST-EMIT-OK" ]]; then
+    printf 'imp:   BROKEN stdout: %s\n' "$(cat "$o")" >&2; ok=false
+  fi
+  if [[ "$(cat "$e")" != "SELFTEST-ERR-OK" ]]; then
+    printf 'imp:   BROKEN stderr: %s\n' "$(cat "$e")" >&2; ok=false
+  fi
+  rm -f "$o" "$e"
+  if $ok; then printf 'imp:   stdout + stderr SEALED\n'; else return 1; fi
+}
+
 # ── main ────────────────────────────────────────────────────────────────
 case "${1:-all}" in
   all)      substrate; core; forge; frame; otsu; view; tui ;;
   console)  console ;;
+  selftest) selftest ;;
   smoke)    smoke ;;
   rites)    rites ;;
   otsu)     otsu ;;

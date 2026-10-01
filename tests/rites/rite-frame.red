@@ -99,4 +99,41 @@ t: try [
 ]
 mark rejoin ["B3 first-line-span: " either error? t ["threw"] [to string! t]]
 
+; ── the dialect. Spec in, rows out, frame assembled — and every line
+; still exactly W columns. This is the data-driven frame the imp now
+; writes; if a spec entry is misread the width contract catches it.
+d-spec: copy []
+append/only d-spec reduce ['border "Imp" W]
+append/only d-spec reduce ['lanes "aap^/bbq^/ccr" 3 (W - 4)]
+append/only d-spec reduce ['divider "Conjured" W]
+append/only d-spec reduce ['row LONG W MUTE]
+append/only d-spec reduce ['row "short" W MUTE]
+append/only d-spec reduce ['footer W]
+t: try [frame-assemble frame-rows d-spec]
+either error? t [
+    mark rejoin ["C dialect: threw " mold t]
+][
+    d-frame: t
+    d-lines: sever d-frame "^/"
+    d-worst: 0
+    d-ok: true
+    foreach dl d-lines [
+        d-span: true-span dl
+        if (d-span > d-worst) [d-worst: d-span]
+        if (d-span <> W) [d-ok: false]
+    ]
+    mark rejoin ["C dialect-lines: " mold length? d-lines]
+    d-verdict: "SEALED"
+    if (not d-ok) [d-verdict: rejoin ["BROKEN, widest=" mold d-worst]]
+    mark rejoin ["C2 dialect-widths: " d-verdict]
+    ; the spec's own order survives the walk: border first, footer last.
+    d-first: first d-lines
+    d-last: last d-lines
+    d-ordered: false
+    if ((find d-first "╭") <> none) [
+        if ((find d-last "╰") <> none) [d-ordered: true]
+    ]
+    mark rejoin ["C3 dialect-order: " either d-ordered ["SEALED"]["BROKEN"]]
+]
+
 mark "DONE"

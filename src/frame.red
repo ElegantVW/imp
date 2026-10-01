@@ -127,3 +127,59 @@ row: func [content [string!] w [integer!] colour [string!] /local body][
     body: subtract w 4
     rejoin [PINK "│" OFF " " colour pad-to clamp-to content body body OFF " " PINK "│" OFF]
 ]
+
+; ── the assembly. Rows in, frame out: interleave the newlines and
+; rejoin ONCE. Hazard 11 — `rejoin rows` joins with NOTHING, so twelve
+; lines become one 480-column line. This is the only place the vertical
+; rule is applied, and it is a leaf like the rest.
+frame-assemble: func [rows [block!] /local out i n][
+    out: copy ""
+    n: length? rows
+    i: 0
+    while [i < n][
+        i: i + 1
+        append out pick rows i
+        if (i < n) [append out "^/"]
+    ]
+    out
+]
+
+; ── the dialect. Spec blocks in, rows out. The imp's frame becomes
+; DATA: change the story without touching the frame code. Each entry
+; is a block whose first word names its kind:
+;
+;   [border  "Imp" 60]          top edge
+;   [lanes   grid 12 56]        the art panel, bordered and padded
+;   [divider "Conjured" 60]     a labelled rule
+;   [row     content 60 colour] one framed content row
+;   [footer  60]                bottom edge
+;
+; A walk, not `parse` — every leaf is already sealed and the structure
+; is one-level. (parse would work too; hazard 2 exonerated it long ago.
+; It just buys nothing over `foreach` here.)
+frame-rows: func [spec [block!] /local out item kind grid rows gutter filler lanes i n][
+    out: copy []
+    foreach item spec [
+        kind: pick item 1
+        if (kind = 'border) [append out top-border pick item 2 pick item 3]
+        if (kind = 'divider) [append out divider pick item 2 pick item 3]
+        if (kind = 'row) [append out row pick item 2 pick item 3 pick item 4]
+        if (kind = 'footer) [append out bottom-border pick item 2]
+        if (kind = 'lanes) [
+            grid: pick item 2
+            rows: pick item 3
+            gutter: pick item 4
+            lanes: sever grid "^/"
+            filler: repeat-chars " " gutter
+            while [(length? lanes) < rows][append lanes filler]
+            if ((length? lanes) > rows) [lanes: copy/part lanes rows]
+            i: 0
+            n: length? lanes
+            while [i < n][
+                append out rejoin [PINK "│" OFF " " pad-to pick lanes (i + 1) gutter OFF " " PINK "│" OFF]
+                i: i + 1
+            ]
+        ]
+    ]
+    out
+]

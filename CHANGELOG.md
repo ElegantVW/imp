@@ -1,5 +1,52 @@
 # Imp changelog
 
+## v0.17.0 (2026-09-30) — the frame becomes data; R/S meets its wall
+
+**The frame is a dialect now.** `con-forge-frame` no longer imperatively
+appends rows; it writes a spec block and hands it to `frame-rows` +
+`frame-assemble` (new, in `frame.red`):
+
+```
+[border "Imp" 60] [lanes grid 12 56] [divider "Conjured" 60]
+[row content 60 colour] [footer 60]
+```
+
+The story is data; the teller is code. Reorder a divider, add a row,
+change a colour — in the spec, nowhere else. Sealed in rite-frame:
+8 lines, every one exactly 60 columns, spec order preserved.
+
+**Red/System meets its wall, honestly.** The R/S forge was the planned
+adventure. Two measurements killed it, and one resurrected its purpose:
+
+- `image/rs-pick`, `platform/io-write` — both `undefined symbol`. User
+  `routine` code reaches libc and nothing else; runtime contexts are
+  namespaced off (hazard 71).
+- The compiler already makes the forge's 30k-`pick` loop native x86
+  when `build.sh console` compiles the bundle. R/S would have
+  duplicated what the language already does (hazard 72).
+
+What R/S is genuinely for here: **libc syscalls** — the one door the
+interpreter never had. `con-emit` (fd 1/2) and `con-readline` (fd 0)
+are in `src/console.red`, byte-exact. The binary now prompts the
+terminal itself; the launcher's bash prompt is decoration.
+
+**A harness truth worth keeping:** R/S is *compile-time only*. Rites
+run the interpreted GUI console, where `routine` does not exist — so
+`tests/rites/rite-rs.red` could never run and was deleted. The syscall
+seal lives where compiled code can be tested: `build.sh selftest`,
+which runs `imp-console --selftest` and checks stdout and stderr bytes.
+Test compiled code with a compiled harness.
+
+**And rite-view, the flaky one, is fixed for real.** Its screenshot
+kept reading a terminal while the window painted fine underneath —
+0 red pixels of 17160. The capture reads the *screen* at the window's
+origin (hazard 54), and i3's floating mode had it under whatever held
+focus. Not a position hint (i3 ignored `win/offset`; measured 900,480
+after asking for 300,300) — `xdotool windowraise` before the capture.
+One pixel, `255.0.0.0`, and the seal holds.
+
+Measure before porting. The port may already be done.
+
 ## v0.16.0 (2026-09-30) — the one-shot goes native
 
 `imp "a wish"` is now a compiled Red binary: argv in, frame on

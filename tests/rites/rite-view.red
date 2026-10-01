@@ -120,7 +120,18 @@ win: layout compose/deep [
         ;   save is handed four arguments. Hazard 46, third appearance.
         k: to integer! tk/text
         tk/text: form k + 1
-        if k >= 2 [
+        ; Raise BEFORE capturing, or the capture reads whatever is on
+        ; top at the window's origin. `to-image` on a window grabs the
+        ; SCREEN (hazard 54), and under i3's floating mode this window
+        ; has landed under a terminal — measured: 0 red pixels of 17160
+        ; while the paint was fine. A `windowraise` first turned it into
+        ; 255.0.0.0 at the top-left and 7066 red of 17160. Raising is
+        ; not a weakened seal; it makes sure the thing being sealed is
+        ; the thing on screen.
+        if k = 2 [
+            call/wait/shell "xdotool search --name 'rite-view' windowraise %@ windowactivate %@ 2>/dev/null; sleep 0.3"
+        ]
+        if k >= 3 [
             face/rate: none
             shot: to-image face/parent
             save %/dev/shm/imp/view-snap.png shot
@@ -129,6 +140,13 @@ win: layout compose/deep [
     ]
 ]
 
+; Under i3's floating mode a window can land UNDER whatever else is on
+; screen, and `to-image` reads the screen at the window's origin
+; (hazard 54). The fix is the raise in the actor above — not a position
+; hint (i3 ignored `win/offset`; the window was measured at 900,480
+; after asking for 300,300). Keep the hint anyway: harmless, and other
+; window managers may honour it.
+win/offset: 300x300
 view win
 
 ; ── the claims, computed here, from what the actor left behind ───────
@@ -141,7 +159,11 @@ say "A window-opened: " [either (n > 0) ["SEALED"]["BROKEN"]]
 say "B loop-live: " [either (n >= 3) ["SEALED"]["BROKEN"]]
 say "   ticks: " [n]
 
-; C: did it paint? read the saved screenshot back and look at a pixel.
+; C: did it paint? Read the screenshot back and look at the top-left
+; pixel — the backdrop is garish red precisely so one pixel settles it.
+; The red count below is extra data: with the 192x192 image widget in
+; the window, the backdrop is ~12900 of 49820 pixels, so "mostly red"
+; is the wrong expectation. What must be red is the corner.
 either exists? SNAP [
     shot: load %/dev/shm/imp/view-snap.png
     ; `size` IS A SYSTEM WORD. `size: shot/size` binds the builtin, not a
@@ -151,13 +173,38 @@ either exists? SNAP [
     ; a plausible name turned out to be occupied.
     snap-size: shot/size
     px: pick shot 1
-    r: pick px 1
-    g: pick px 2
-    b: pick px 3
-    painting?: (r > 200) and (g < 60) and (b < 60)
+    ; The verdict comes from the TOP-LEFT pixel, bound before the loop
+    ; below — the loop uses its own names, because clobbering r/g/b
+    ; made the verdict read the LAST pixel instead (measured: 255.0.0.0
+    ; at top-left while the seal said BROKEN).
+    pr: pick px 1
+    pg: pick px 2
+    pb: pick px 3
+    painted?: false
+    if (pr > 200) [
+        if (pg < 60) [
+            if (pb < 60) [painted?: true]
+        ]
+    ]
+    tot-n: length? shot
+    red-n: 0
+    i: 0
+    while [i < tot-n][
+        i: i + 1
+        pxx: pick shot i
+        rr: pick pxx 1
+        gg: pick pxx 2
+        bb2: pick pxx 3
+        if (rr > 200) [
+            if (gg < 60) [
+                if (bb2 < 60) [red-n: red-n + 1]
+            ]
+        ]
+    ]
     say "   snapshot: " [snap-size]
-say "   top-left px: " [px]
-    say "C paints-backdrop: " [either painting? ["SEALED"]["BROKEN"]]
+    say "   top-left px: " [px]
+    say "   red px: " [(rejoin [red-n " / " tot-n])]
+    say "C paints-backdrop: " [either painted? ["SEALED"]["BROKEN"]]
 ][
     say "C paints-backdrop: " ["BROKEN, no snapshot was saved"]
 ]

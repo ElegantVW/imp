@@ -11,7 +11,52 @@ Red [Title: "imp-console"]
 ; existing first. Machine paths are hardcoded — this box is the only
 ; target, and the rites assume it too.
 ;
-; Covenant checks the launcher used to do live on.
+; The tty prompt and the covenant checks are NOT argv's business —
+; this binary is the whole one-shot flow. argv: a wish paints it; no
+; args asks the terminal (fd 0) and paints what arrives.
+;
+; ── syscalls, via libc. #import is the GPIO pattern; routines give
+; Red words for fd 1 (write) and fd 0 (read). Tail-bump idiom is
+; Red's own CLI input path. print/read stay for interpreted use;
+; the binary talks fds directly, byte-exact, no added newlines.
+
+#system [
+    #import [
+        LIBC-file cdecl [
+            con-sys-write: "write" [
+                fd      [integer!]
+                buf     [byte-ptr!]
+                count   [integer!]
+                return: [integer!]
+            ]
+            con-sys-read: "read" [
+                fd      [integer!]
+                buf     [byte-ptr!]
+                count   [integer!]
+                return: [integer!]
+            ]
+        ]
+    ]
+]
+
+con-fd-write: routine [fd [integer!] b [binary!] return: [integer!] /local n][
+    n: con-sys-write fd binary/rs-head b binary/rs-length? b
+    return n
+]
+; Red-level door: strings in, bytes out. fd 1 is the frame and the
+; prompt; fd 2 is every error (the exit code carries failure too).
+con-emit: func [fd [integer!] s [string!] /local out][
+    out: con-fd-write fd to binary! s
+    out
+]
+con-readline: routine [b [binary!] max [integer!] return: [integer!] /local n s][
+    n: con-sys-read 0 binary/rs-head b max
+    if n > 0 [
+        s: GET_BUFFER(b)
+        s/tail: as cell! (as byte-ptr! s/tail) + n
+    ]
+    return n
+]
 
 IMP-SHM: %/dev/shm/imp/
 IMP-F-ENV: %/dev/shm/imp/imp-env.txt
@@ -44,6 +89,7 @@ con-prompt: ""
 con-prompt-raw: ""
 con-ei: 0
 con-entry: copy []
+con-spec: copy []
 
 ; the runtime wraps every argv element in single quotes AND escapes
 ; embedded quotes Bourne-style, so the args arrive as one string with
@@ -87,7 +133,7 @@ con-argv-wish: func [raw [string!] /local parts out p seen][
 ]
 
 con-die: func [s [string!] /local out][
-    print rejoin ["imp: " s]
+    con-emit 2 rejoin ["imp: " s "^/"]
     quit/return 1
     out: 0
     out
@@ -109,26 +155,55 @@ either exists? IMP-F-ENV [][
         "llm-url=" IMP-LLM-URL "^/"
     ]
 ]
+; the covenant, checked before anything runs
 either (pick IMP-MODEL 1) = #"/" [][con-die "the model path is not absolute"]
-either exists? to file! IMP-SD [][con-die "no hand (sd-cli)"]
-either exists? to file! IMP-MODEL [][con-die "no weights"]
+either exists? to file! IMP-SD [][con-die "no hand at sd-cli"]
+either exists? to file! IMP-MODEL [][con-die "no weights at the model"]
 
 con-wish-raw: system/script/args
 either (con-wish-raw = none) [
-    con-die "an empty wish conjures nothing. (usage: imp with a wish)"
+    con-wish-raw: ""
 ][
     con-wish-raw: con-argv-wish to string! con-wish-raw
-    con-wish-raw: con-trim-nl con-wish-raw
-    either (length? con-wish-raw) = 0 [
-        con-die "an empty wish conjures nothing. (usage: imp with a wish)"
+]
+
+; ── selftest. R/S is COMPILE-TIME only: rites run the interpreted
+; console where `routine` does not exist, so the syscall path can only
+; be sealed by a compiled binary testing itself. This is that seal —
+; build.sh selftest redirects stdout to a file and checks the bytes.
+either (con-wish-raw = "--selftest") [
+    con-emit 1 "SELFTEST-EMIT-OK^/"
+    con-emit 2 "SELFTEST-ERR-OK^/"
+    quit/return 0
+][
+]
+
+either (length? con-wish-raw) = 0 [
+    ; no args: ask the terminal directly. EOF (no tty, closed pipe)
+    ; reads zero bytes — the mortal never spoke, and we say so.
+    con-emit 1 rejoin ["^(1B)[38;5;175m" "^(1B)[0m" "imp: what do you wish for? ^C to leave.^/^> "]
+    con-wish-buf: make binary! 1024
+    con-wish-n: con-readline con-wish-buf 1024
+    either (con-wish-n <= 0) [
+        con-die "the wish was never spoken."
     ][
-        write %/dev/shm/imp/job con-wish-raw
+        con-wish-raw: con-trim-nl to string! con-wish-buf
     ]
+][
+    con-wish-raw: con-trim-nl con-wish-raw
+]
+either (length? con-wish-raw) = 0 [
+    con-die "an empty wish conjures nothing."
+][
+    write %/dev/shm/imp/job con-wish-raw
 ]
 
 con-out: con-run
 either (con-out = "ok") [
-    print read %/dev/shm/imp/frame
+    ; byte-exact stdout: the frame, then one newline — what `cat`
+    ; plus a printf newline used to emit.
+    con-emit 1 read %/dev/shm/imp/frame
+    con-emit 1 "^/"
 ][
     con-die "the vessel accepted the wish and painted nothing."
 ]
