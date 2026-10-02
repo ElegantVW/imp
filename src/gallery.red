@@ -251,6 +251,59 @@ gal-plain: func [s [string!] /local out i n c done][
     out
 ]
 
+; ── the saved dir, listed. `read` on a directory THROWS in this
+; build (measured); `call/output/wait "ls"` answers instead, missing
+; dir included (empty out, no throw). Only .txt files come back —
+; the ledger, the previews and the strays, nothing else.
+gal-files: func [art [string!] /local out lst lines i f tail4][
+    out: copy []
+    lst: copy ""
+    try [call/output/wait (rejoin ["ls " art]) lst]
+    lines: sever lst "^/"
+    i: 0
+    while [i < (length? lines)][
+        i: i + 1
+        f: pick lines i
+        either ((length? f) > 4) [
+            tail4: try [to string! (skip f ((length? f) - 4))]
+            either (error? tail4) [][
+                if ((tail4 = ".txt")) [append/only out f]
+            ]
+        ][]
+    ]
+    out
+]
+
+; ── the browser rows: ledger entries whose painting still exists,
+; hour order (covenant §1), then strays — txt files with no entry,
+; wish named for the file, hour last. A missing dir is an empty
+; gallery, never an error.
+gal-browse: func [art [string!] cache [string!] /local out files entries e eid known base f][
+    out: copy []
+    files: gal-files art
+    entries: gal-list cache
+    foreach e entries [
+        eid: try [to string! (select e 'id)]
+        either (error? eid) [][
+            if ((length? eid) > 0) [
+                if (exists? (gal-entry-file art eid)) [append/only out e]
+            ]
+        ]
+    ]
+    known: copy " "
+    foreach e out [
+        eid: try [to string! (select e 'id)]
+        either (error? eid) [][append known rejoin [eid " "]]
+    ]
+    foreach f files [
+        base: f
+        if ((length? f) > 4) [base: to string! (copy/part f ((length? f) - 4))]
+        if ((find known (rejoin [" " base " "])) = none) [
+            append/only out (make map! reduce ['id base 'wish f 'style "?" 'hand "?" 'size 0 'hour 99])
+        ]
+    ]
+    out
+]
 ; ── first run. No marker, no memory: the gallery performs something
 ; harmless and inexplicable exactly once (covenant §3), and only the
 ; grimoire explains it. The marker is a PLAIN filename — writing to a

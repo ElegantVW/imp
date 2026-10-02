@@ -129,8 +129,6 @@ idle-flame: " "
 ; send-event type 'click), so the rite calls this and the human clicks
 ; it — same words either way. Ends on `out`, never on a conditional.
 con-press: func [/local out sz-text n enh hi][
-    ; A press means the eyes are open: the greeter has done its once.
-    greet-face/visible?: no
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -221,22 +219,140 @@ con-file-painting: func [art [string!] cache [string!] /local out wish si hi sz-
     out: gal-add art cache wish (con-get-style-name si) (con-get-hand-name hi) n con-frame
     out
 ]
-; ── the greeter. First run only: no marker in the cache dir, the
-; overlay shows and the mark is made at once, so the next opening
-; stays quiet even if this one quits before conjuring. The overlay
-; is a plain text face — the imp's glyph belongs to the SIGIL agent
-; (never touch SIGIL.md/assets), and this machinery, show once and
-; hide on press, is all that lives here. Ends on `out`.
-con-greet: func [/local out][
-    out: false
+; ── the menu. The starting table, every launch: gallery or
+; generate. One switch, three views; buttons are one word each and
+; rites call the same words (synthetic clicks never arrive, hazard
+; 61). State lives in visibility itself. Ends on `out`.
+con-show-view: func [v [string!] /local out m g b][
+    out: v
+    m: v = "menu"
+    g: v = "generate"
+    b: v = "gallery"
+    menu-face/visible?: m
+    gal-btn/visible?: m
+    gen-btn/visible?: m
+    wish-lab/visible?: g
+    wish-face/visible?: g
+    conjure-btn/visible?: g
+    quit-btn/visible?: g
+    size-lab/visible?: g
+    size-dd/visible?: g
+    size-custom/visible?: g
+    hand-lab/visible?: g
+    hand-dd/visible?: g
+    steps-lab/visible?: g
+    step-slider/visible?: g
+    steps-num/visible?: g
+    style-lab/visible?: g
+    style-dd/visible?: g
+    enh-btn/visible?: g
+    gen-back-btn/visible?: g
+    status-face/visible?: g
+    flame-face/visible?: g
+    pic-face/visible?: g
+    gal-lab/visible?: b
+    gal-dd/visible?: b
+    gal-show-btn/visible?: b
+    gal-area/visible?: b
+    gal-back-btn/visible?: b
+    out
+]
+; ── entering the gallery. Shows the view, then reads the true
+; state of the dirt (ledger joined with files, hour first). Named,
+; so the button and the rite are the same words.
+con-gallery-enter: func [art [string!] cache [string!] /local out][
+    con-show-view "gallery"
+    out: con-gallery-refresh art cache
+    out
+]
+con-gallery-refresh: func [art [string!] cache [string!] /local out rows labels e][
+    out: "empty"
+    rows: gal-browse art cache
+    labels: copy []
+    foreach e rows [append labels (gal-field e "wish")]
+    either ((length? rows) > 0) [
+        gal-dd/data: labels
+        gal-dd/selected: 1
+        out: con-gallery-show art cache
+    ][
+        gal-dd/data: ["(empty)"]
+        gal-dd/selected: 1
+        gal-area/text: "the gallery is empty. conjure something."
+    ]
+    out
+]
+con-gallery-show: func [art [string!] cache [string!] /local out rows i e eid t][
+    out: "shown"
+    rows: gal-browse art cache
+    i: gal-dd/selected
+    either (i = none) [i: 1][]
+    e: pick rows i
+    either (e = none) [
+        gal-area/text: "nothing chosen."
+        out: "nothing chosen."
+    ][
+        eid: gal-field e "id"
+        t: try [read (gal-entry-file art eid)]
+        either (error? t) [
+            gal-area/text: "the painting is gone."
+            out: "the painting is gone."
+        ][
+            gal-area/text: gal-plain t
+            out: eid
+        ]
+    ]
+    out
+]
+; ── the opening. Menu every launch; the welcome line performs once
+; (covenant §3) and the mark is made at show time. Called once, after
+; the layout, before the wrapper views. Ends on `out`.
+con-menu-start: func [/local out][
+    out: "menu"
     either ((length? CON-CACHE-DIR) = 0) [
+        menu-face/text: "the imp wakes. gallery or generate?"
     ][
         either (gallery-first? CON-CACHE-DIR) [
-            greet-face/visible?: yes
+            menu-face/text: "welcome, first of all. the gallery will remember everything. gallery or generate?"
             gallery-mark CON-CACHE-DIR
-            out: true
         ][
-            greet-face/visible?: no
+            menu-face/text: "the imp wakes. gallery or generate?"
+        ]
+    ]
+    con-show-view "menu"
+    out
+]
+; ── delivery, named. The flame poll calls this with the law's dirs;
+; a rite calls it with a sandbox. ok files the painting and names
+; the id on the status line (by omission only: no id, no claim);
+; fail reports; anything else is still painting, with dots.
+; Ends on `out`, never on a conditional.
+con-deliver: func [art [string!] cache [string!] result [string!] /local out fid][
+    out: result
+    either ((con-kind result) = "ok") [
+        busy-face/text: "0"
+        con-calm
+        pic-face/image: CON-PIC
+        fid: ""
+        if (((length? art) > 0) and ((length? cache) > 0)) [
+            fid: con-file-painting art cache
+        ]
+        either ((length? fid) > 0) [
+            status-face/text: rejoin ["ready. wish again. filed as " fid "."]
+        ][
+            status-face/text: "ready. wish again."
+        ]
+        flame-face/text: idle-flame
+        out: status-face/text
+    ][
+        either ((con-kind result) = "fail") [
+            busy-face/text: "0"
+            con-calm
+            flame-face/text: idle-flame
+            status-face/text: result
+            out: status-face/text
+        ][
+            status-face/text: rejoin [result con-dots]
+            out: status-face/text
         ]
     ]
     out
@@ -435,26 +551,31 @@ win: layout/flags [
     ]
     backdrop 26.18.24
     across
-    text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    menu-face: text 300 "the imp wakes. gallery or generate?" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 10]
+    gal-btn: button 100 "gallery" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-gallery-enter CON-ART-DIR CON-CACHE-DIR]
+    gen-btn: button 100 "generate" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-show-view "generate"]
+    return
+    wish-lab: text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     wish-face: field 200 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
     conjure-btn: button 120 "conjure" font [name: "DejaVu Sans Mono" color: 26.18.24 size: 11 style: 'bold] [con-press]
     quit-btn: button 60 "quit" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-quit]
     return
-    text 40 "size" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    size-lab: text 40 "size" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     size-dd: drop-down 100 data SIZES font [name: "DejaVu Sans Mono" color: 240.228.238]
     size-custom: field 80 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
     busy-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
-    text 40 "hand" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    hand-lab: text 40 "hand" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     hand-dd: drop-down 100 data CON-HAND-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
-    text 40 "steps" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    steps-lab: text 40 "steps" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     step-slider: slider 120 data 8% on-change [con-steps-label]
     steps-num: text 40 "4" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 12]
     sync-face: text 10 "1:8" font [color: 26.18.24 size: 1]
     return
-    text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    style-lab: text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     style-dd: drop-down 150 data CON-STYLE-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
     enh-btn: button 120 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-enhance]
+    gen-back-btn: button 60 "menu" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-show-view "menu"]
     rw-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
     status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
@@ -463,27 +584,7 @@ win: layout/flags [
         either ((busy-face/text = "1") or ((rw-face/text) = "1")) [
             flame-face/text: con-next-flame flame-face/text
             either (busy-face/text = "1") [
-                status-face/text: form con-tick
-                either ((con-kind status-face/text) = "ok") [
-                    busy-face/text: "0"
-                    con-calm
-                    pic-face/image: CON-PIC
-                    ; File the painting. Failure files nothing and says
-                    ; nothing: the status line may lie by omission only.
-                    if (((length? CON-ART-DIR) > 0) and ((length? CON-CACHE-DIR) > 0)) [
-                        con-file-painting CON-ART-DIR CON-CACHE-DIR
-                    ]
-                    status-face/text: "ready. wish again."
-                    flame-face/text: idle-flame
-                ][
-                    either ((con-kind status-face/text) = "fail") [
-                        busy-face/text: "0"
-                        con-calm
-                        flame-face/text: idle-flame
-                    ][
-                        status-face/text: rejoin [status-face/text con-dots]
-                    ]
-                ]
+                status-face/text: con-deliver CON-ART-DIR CON-CACHE-DIR (form con-tick)
             ][
                 status-face/text: form con-rewrite-tick
                 either ((copy/part status-face/text 3) = "ok:") [
@@ -505,7 +606,12 @@ win: layout/flags [
         ]
     ]
     return
-    greet-face: text 300 "the imp wakes. it remembers nothing. wish, and it will paint." font [name: "DejaVu Sans Mono" color: 200.155.224 size: 10]
+    gal-lab: text 40 "saved" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    gal-dd: drop-down 150 data ["(empty)"] font [name: "DejaVu Sans Mono" color: 240.228.238]
+    gal-show-btn: button 80 "show" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-gallery-show CON-ART-DIR CON-CACHE-DIR]
+    return
+    gal-area: area 280x150 "the gallery is empty. conjure something." font [name: "DejaVu Sans Mono" color: 240.228.238 size: 10]
+    gal-back-btn: button 80 "back" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-show-view "menu"]
     return
     pic-face: image 300x300 pic
 ] [resize]
@@ -516,6 +622,6 @@ size-dd/selected: to integer! ((h // 7) + 1)
 style-dd/selected: 1
 ; Turbo opens: the standing hand, and the slider agrees with it.
 hand-dd/selected: 1
-; The greeter performs once and never again. Marked at show time,
-; so quitting early still counts as having been welcomed.
-con-greet
+; The menu opens, every launch. The welcome line performs once;
+; the mark is made at show time.
+con-menu-start

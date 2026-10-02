@@ -10,6 +10,7 @@ Red [Title: "rite-gallery" Needs: View]
 ;   D  plain strips SGR and keeps glyphs
 ;   E  first-run marker lifecycle
 ;   F  a wish with quotes round-trips through the hand-built json
+;   H  the browser joins ledger and dirt (files, rows, missing dirs)
 
 do %src/core.red
 do %src/gallery.red
@@ -97,6 +98,28 @@ say "D2 no-esc: " [either noesc ["SEALED"]["BROKEN, esc survived"]]
 say "E first-fresh: " [either (gallery-first? CACHE) ["SEALED"]["BROKEN, marker preexists"]]
 gallery-mark CACHE
 say "E2 marked: " [either (gallery-first? CACHE) ["BROKEN, still fresh"]["SEALED"]]
+
+; ── H: the browser joins ledger and dirt ────────────────────────────
+ART2: "/dev/shm/imp/gal-test/art2"
+CACHE2: "/dev/shm/imp/gal-test/cache2"
+call/wait/shell "rm -rf /dev/shm/imp/gal-test/art2 /dev/shm/imp/gal-test/cache2; mkdir -p /dev/shm/imp/gal-test/art2 /dev/shm/imp/gal-test/cache2"
+h1: gal-add ART2 CACHE2 "w-kept" "s" "h" 128 "f-kept"
+h2: gal-add ART2 CACHE2 "w-kept2" "s" "h" 128 "f-kept2"
+call/wait/shell "echo stray > /dev/shm/imp/gal-test/art2/stray.txt; echo md > /dev/shm/imp/gal-test/art2/note.md"
+call/wait/shell (rejoin ["rm /dev/shm/imp/gal-test/art2/" h1 ".txt"])
+hf: gal-files ART2
+say "H files: " [either ((length? hf) = 2) ["SEALED"]["BROKEN"]]
+say "   files: " [(mold hf)]
+hb: gal-browse ART2 CACHE2
+say "H2 browse-count: " [either ((length? hb) = 2) ["SEALED"]["BROKEN"]]
+say "   rows: " [(length? hb)]
+hw1: to string! (select (pick hb 1) 'wish)
+hw2: to string! (select (pick hb 2) 'wish)
+hs2: to string! (select (pick hb 2) 'style)
+say "H3 rows: " [either (((hw1 = "w-kept2") and (hw2 = "stray.txt")) and (hs2 = "?")) ["SEALED"]["BROKEN"]]
+say "   rows: " [(rejoin [hw1 "/" hw2 "/" hs2])]
+hm: gal-browse "/dev/shm/imp/gal-test/no-art" "/dev/shm/imp/gal-test/no-cache"
+say "H4 missing-dirs: " [either ((length? hm) = 0) ["SEALED"]["BROKEN"]]
 
 say "F single-write: " ["SEALED - this file is the only product"]
 

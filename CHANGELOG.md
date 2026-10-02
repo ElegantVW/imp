@@ -1,5 +1,28 @@
 # Imp changelog
 
+## v0.19.0 (2026-10-02) — the starting table: gallery or generate
+
+**The menu opens every launch.** The one-line greeter is now a starting
+table: `menu-face` plus `gallery` and `generate` buttons, first row of
+the window. `con-show-view` switches three views (menu / generate /
+gallery) by visibility — buttons are one word each and rites call the
+same words. The welcome line still performs once (covenant §3, marked at
+show time). The imp's glyph remains the SIGIL agent's; this is machinery.
+
+**The gallery reads the dirt.** `gal-files` lists `~/pixie_art/*.txt`
+through `call/output/wait "ls"` (`read` on a dir throws — hazard 78);
+`gal-browse` joins the ledger (hour order, paintings that still exist)
+with strays (txt without entry, hour last). The browser is a drop-down
+plus an explicit `show` button — programmatic selects don't fire
+`on-change` (hazard 79) — previewing bare glyphs in an area, `back`
+returning to the menu. Missing dirs are an empty gallery, never an error.
+
+**Delivery names the filed id.** The success poll now calls `con-deliver`
+(named, so a rite walks it with a sandbox): ok files the painting and
+the status says `ready. wish again. filed as <id>.` — no id, no claim.
+Sealed: rite-tui-gallery T1–T8, rite-gallery H, rite-tui A–Y untouched.
+Hazards 78–80.
+
 ## v0.18.0 (2026-10-02) — the gallery remembers; the greeter performs once
 
 **Every successful conjure is filed.** The success poll in `src/tui.red`

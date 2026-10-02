@@ -1,13 +1,17 @@
 Red [Title: "rite-tui-gallery" Needs: View]
-; THE FILING AND THE GREETER, PROVED WITHOUT A GPU. The window builds
-; (faces only, never viewed); the painting is filed by calling the
-; exact func the success poll calls, with sandbox dirs; the greeter is
-; the exact func the startup calls, pointed at a fresh cache.
+; THE MENU AND THE FILING, PROVED WITHOUT A GPU. The window builds
+; (faces only, never viewed). The menu opens every launch; generate
+; reveals the work; the gallery reads the dirt; delivery files and
+; names the id. Sandbox dirs throughout.
 ;
 ;   T1  con-file-painting files txt + json entry from faces + con-frame
-;   T2  con-greet shows once, marks, and stays quiet after
-;   T3  a press dismisses the greeter (even a refused one)
-;   T4  the picture is still the last face (the old rite's G holds)
+;   T2  menu opens at startup, work hidden; welcome performs once
+;   T3  generate reveals the work, hides the menu
+;   T4  gallery enters, lists, previews, strays included
+;   T5  back returns to the menu
+;   T6  con-deliver ok files + names the id; fail reports
+;   T7  empty gallery says so
+;   T8  the picture is still the last face
 do %src/tui.red
 
 led: copy []
@@ -47,31 +51,66 @@ foreach e te [
 say "T1c entry: " [either (((tw = "a fox in neon rain") and (tst = "Mignola")) and ((th = "SDXL") and (tsz = 256))) ["SEALED"]["BROKEN"]]
 say "   entry: " [(rejoin [tw "/" tst "/" th "/" (to string! tsz)])]
 
-; ── T2: the greeter performs once ───────────────────────────────────
+; ── T2: the menu opens, work hidden ─────────────────────────────────
+say "T2 menu-first: " [either (((menu-face/visible? = true) and (wish-face/visible? = false)) and (gal-area/visible? = false)) ["SEALED"]["BROKEN"]]
+say "   menu: " [menu-face/text]
 CON-CACHE-DIR: CACHE
-g1: con-greet
-say "T2 greets: " [either ((g1 = true) and (greet-face/visible? = true)) ["SEALED"]["BROKEN"]]
-g2: con-greet
-say "T2b quiet-after: " [either ((g2 = false) and (greet-face/visible? = false)) ["SEALED"]["BROKEN"]]
+m1: con-menu-start
+say "T2b welcome-once: " [either ((m1 = "menu") and ((find menu-face/text "first of all") <> none)) ["SEALED"]["BROKEN"]]
+m2: con-menu-start
+say "T2c quiet-after: " [either ((find menu-face/text "first of all") = none) ["SEALED"]["BROKEN, welcomed twice"]]
 
-; ── T3: a press dismisses ───────────────────────────────────────────
-CON-CACHE-DIR: "/dev/shm/imp/gal-tui/fresh"
-call/wait/shell "mkdir -p /dev/shm/imp/gal-tui/fresh"
-con-greet
-wish-face/text: ""
-con-press
-say "T3 press-dismisses: " [either (greet-face/visible? = false) ["SEALED"]["BROKEN, still showing"]]
+; ── T3: generate reveals ────────────────────────────────────────────
+con-show-view "generate"
+say "T3 generate: " [either (((wish-face/visible? = true) and (menu-face/visible? = false)) and (pic-face/visible? = true)) ["SEALED"]["BROKEN"]]
 
-; ── T4: the picture is still last ───────────────────────────────────
+; ── T4: the gallery reads dirt ──────────────────────────────────────
+call/wait/shell "rm -rf /dev/shm/imp/gal-tui/art /dev/shm/imp/gal-tui/cache; mkdir -p /dev/shm/imp/gal-tui/art /dev/shm/imp/gal-tui/cache"
+g1: gal-add ART CACHE "w-browse-one" "s" "h" 128 "FIRST-PAINTING"
+g2: gal-add ART CACHE "w-browse-two" "s" "h" 128 "SECOND-PAINTING"
+call/wait/shell "echo stray-words > /dev/shm/imp/gal-tui/art/stray.txt"
+ge: con-gallery-enter ART CACHE
+say "T4 enter: " [either (((gal-area/visible? = true) and (menu-face/visible? = false)) and ((length? gal-dd/data) = 3)) ["SEALED"]["BROKEN"]]
+say "   enter: " [ge]
+say "T4b preview-first: " [either ((find gal-area/text "FIRST-PAINTING") <> none) ["SEALED"]["BROKEN"]]
+say "   area: " [(copy/part gal-area/text 20)]
+gal-dd/selected: 3
+gs: con-gallery-show ART CACHE
+say "T4c stray-preview: " [either ((find gal-area/text "stray-words") <> none) ["SEALED"]["BROKEN"]]
+say "   stray: " [gs]
+
+; ── T5: back returns ────────────────────────────────────────────────
+con-show-view "menu"
+say "T5 back: " [either (((menu-face/visible? = true) and (gal-area/visible? = false)) and (wish-face/visible? = false)) ["SEALED"]["BROKEN"]]
+
+; ── T6: delivery files and names ────────────────────────────────────
+CON-PIC: pic
+wish-face/text: "a lighthouse in a storm"
+style-dd/selected: 1
+hand-dd/selected: 1
+size-custom/text: ""
+con-frame: "DELIVERY-FRAME"
+gd: con-deliver ART CACHE "ok"
+say "T6 deliver-files: " [either ((find gd "filed as") <> none) ["SEALED"]["BROKEN"]]
+say "   status: " [gd]
+gf: con-deliver ART CACHE "fail: test silence"
+say "T6b deliver-fail: " [either ((gf = "fail: test silence") and (busy-face/text = "0")) ["SEALED"]["BROKEN"]]
+
+; ── T7: empty gallery says so ───────────────────────────────────────
+call/wait/shell "rm -rf /dev/shm/imp/gal-tui/empty-art /dev/shm/imp/gal-tui/empty-cache; mkdir -p /dev/shm/imp/gal-tui/empty-art /dev/shm/imp/gal-tui/empty-cache"
+he: con-gallery-enter "/dev/shm/imp/gal-tui/empty-art" "/dev/shm/imp/gal-tui/empty-cache"
+say "T7 empty: " [either ((he = "empty") and ((find gal-area/text "empty") <> none)) ["SEALED"]["BROKEN"]]
+
+; ── T8: the picture is still last ───────────────────────────────────
 pane: win/pane
 faces: length? pane
 either (faces >= 1) [
     last-f: pick pane faces
     last-w: last-f/size/x
-    say "T4 image-last: " [either (last-w >= 300) ["SEALED"]["BROKEN"]]
+    say "T8 image-last: " [either (last-w >= 300) ["SEALED"]["BROKEN"]]
     say "   last width: " [last-w]
 ][
-    say "T4 image-last: " ["BROKEN, empty pane"]
+    say "T8 image-last: " ["BROKEN, empty pane"]
 ]
 
 say "Z single-write: " ["SEALED - this file is the only product"]
