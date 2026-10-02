@@ -1,5 +1,26 @@
 # Imp changelog
 
+## v0.21.0 (2026-10-02) — quit everywhere, dark previews, bigger paintings
+
+**Quit is on every view.** Menu and gallery rows each carry their own
+`quit` (generate already had one) — no more keyboard-only exits. Seal F
+counts three quits by word.
+
+**The gallery was never tofu.** Braille coverage probed live: DejaVu
+Sans Mono renders braille and half-blocks fine at 10/14/18pt. What read
+as tofu was the preview area's near-white font on a native white widget
+— the same washed-out class as the wish field. Preview is now dark on
+white at size 12, sealed U8.
+
+**Paintings fill better.** `pic-face` 300 → 480 (seals C/G tolerate;
+U9 pins it), verified fullscreen.
+
+**Model matrix green.** New slow rite-model-matrix: turbo 4/8sp, SDXL
+20/10sp, Pony 25/15sp, enhance off, six real conjures — every combo
+passed with steps confirmed in the frame and every painting filed.
+The reported SDXL/Pony flakiness does not reproduce on this matrix;
+suspects remaining are mouth-on variance and higher step counts.
+
 ## v0.20.0 (2026-10-02) — the look pass, first coat
 
 **Readability before beauty.** Five items, in the order given: the

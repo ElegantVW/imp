@@ -231,6 +231,7 @@ con-show-view: func [v [string!] /local out m g b][
     menu-face/visible?: m
     gal-btn/visible?: m
     gen-btn/visible?: m
+    menu-quit-btn/visible?: m
     wish-lab/visible?: g
     wish-face/visible?: g
     conjure-btn/visible?: g
@@ -255,6 +256,7 @@ con-show-view: func [v [string!] /local out m g b][
     gal-show-btn/visible?: b
     gal-area/visible?: b
     gal-back-btn/visible?: b
+    gal-quit-btn/visible?: b
     gal-meta-face/visible?: b
     out
 ]
@@ -559,6 +561,7 @@ win: layout/flags [
     menu-face: text 300 "the imp wakes. gallery or generate?" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 10]
     gal-btn: button 100 "gallery" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-gallery-enter CON-ART-DIR CON-CACHE-DIR]
     gen-btn: button 100 "generate" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-show-view "generate"]
+    menu-quit-btn: button 60 "quit" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-quit]
     return
     wish-lab: text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     wish-face: field 200 font [name: "DejaVu Sans Mono" color: 26.18.24 size: 12]
@@ -615,12 +618,13 @@ win: layout/flags [
     gal-dd: drop-down 200 data ["(empty)"] font [name: "DejaVu Sans Mono" color: 240.228.238]
     gal-show-btn: button 80 "show" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-gallery-show CON-ART-DIR CON-CACHE-DIR]
     return
-    gal-area: area 280x150 "the gallery is empty. conjure something." font [name: "DejaVu Sans Mono" color: 240.228.238 size: 10]
+    gal-area: area 280x150 "the gallery is empty. conjure something." font [name: "DejaVu Sans Mono" color: 26.18.24 size: 12]
     gal-back-btn: button 80 "back" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-show-view "menu"]
+    gal-quit-btn: button 60 "quit" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-quit]
     return
     gal-meta-face: text 300 "" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     return
-    pic-face: image 300x300 pic
+    pic-face: image 480x480 pic
 ] [resize]
 ; ── the opening preset. Ordinary code, after the layout: the faces
 ; exist by now. Deterministic from the hour, unexplained in-product.

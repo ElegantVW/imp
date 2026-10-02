@@ -83,11 +83,13 @@ u1: size-dd/selected
 say "   preset: " [(rejoin [u0 " -> " u1 " custom=" size-custom/text])]
 say "D size-cycler: " [either (u0 <> u1) ["SEALED"]["BROKEN, the key did nothing"]]
 
-; ── F: the three buttons are there — conjure, quit, enhance ───────
+; ── F: the buttons are there — conjure, quit three times (menu,
+; generate and gallery rows each carry one home), enhance ─────────
 ; Match by their own words. (A type check rode along here briefly;
 ; an unguarded /type read is a death sentence if any pane element
 ; lacks the facet — text-only, inside try, is the shape that lives.)
 n-btn: 0
+n-quit: 0
 conjure?: false
 quit?: false
 enh?: false
@@ -98,12 +100,12 @@ foreach f pane [
         either (t = none) [
         ][
             if ((t = "conjure")) [n-btn: n-btn + 1  conjure?: true]
-            if ((t = "quit")) [n-btn: n-btn + 1  quit?: true]
+            if ((t = "quit")) [n-btn: n-btn + 1  n-quit: n-quit + 1  quit?: true]
             if ((find t "enhance") <> none) [n-btn: n-btn + 1  enh?: true]
         ]
     ]
 ]
-say "F buttons: " [either (((n-btn = 3) and conjure? and quit?) and enh?) ["SEALED"]["BROKEN"]]
+say "F buttons: " [either (((n-quit = 3) and conjure? and quit?) and enh?) ["SEALED"]["BROKEN"]]
 say "   buttons: " [n-btn]
 
 ; ── G: the image is LAST, because the old rite picks the last face ─

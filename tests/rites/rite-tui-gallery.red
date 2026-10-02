@@ -122,6 +122,12 @@ con-gallery-enter ART CACHE
 say "U4 meta-shows: " [either (((find gal-meta-face/text "w-browse-one") <> none) and ((find gal-meta-face/text "hour") <> none)) ["SEALED"]["BROKEN"]]
 say "   meta: " [gal-meta-face/text]
 say "U5 status-readable: " [either ((status-face/font/size) = 11) ["SEALED"]["BROKEN"]]
+con-show-view "menu"
+say "U6 menu-quit: " [either ((menu-quit-btn/visible? = true) and (gal-quit-btn/visible? = false)) ["SEALED"]["BROKEN"]]
+con-show-view "gallery"
+say "U7 gallery-quit: " [either (gal-quit-btn/visible? = true) ["SEALED"]["BROKEN"]]
+say "U8 preview-dark: " [either (((mold gal-area/font/color) = "26.18.24") and ((gal-area/font/size) = 12)) ["SEALED"]["BROKEN, washed out"]]
+say "U9 pic-fills: " [either ((pic-face/size/x) = 480) ["SEALED"]["BROKEN"]]
 
 say "Z single-write: " ["SEALED - this file is the only product"]
 
