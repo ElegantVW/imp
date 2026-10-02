@@ -1,5 +1,33 @@
 # Imp changelog
 
+## v0.18.0 (2026-10-02) — the gallery remembers; the greeter performs once
+
+**Every successful conjure is filed.** The success poll in `src/tui.red`
+calls `con-file-painting` with the law's dirs (told by the launcher via
+`imp-env.txt`: `art=$HOME/pixie_art`, `cache=$HOME/.cache/pixie/imp`,
+both made in the launcher). It reads the faces — the wish as it stands,
+chosen style/hand/size — plus `con-frame`, and `gal-add` (new,
+`src/gallery.red`) writes `~/pixie_art/<id>.txt` and one JSON line in
+the ledger. Past 666 the oldest is evicted, file and entry both. Display
+order is always creation hour (covenant §1). Filing never throws and never
+touches the status line: the worst answer is `""`, and the conjure already
+landed. Sealed in rite-gallery (add, hour order, cap eviction, SGR strip,
+marker lifecycle, quote round-trip) and rite-tui-gallery (faces → files).
+
+**The greeter performs once.** `con-greet` shows a one-line overlay on
+first run only (no marker in the cache dir), marks at show time, and any
+press dismisses it. The overlay is plain text — the imp's glyph belongs to
+the SIGIL agent (`SIGIL.md`/`assets/` untouched), and show-once/hide-on-press
+is the whole machinery. The prophecy (`GAL-PROPHECY`) lives in
+`src/gallery.red` and nowhere in-product.
+
+**The escaper's loop is retired.** `con-esc` looped `while [(find o dq)]`
+with `replace` — but the replacement contains the needle, so a quoted wish
+hung everything with no witness. Single pass now, sealed with a quote and a
+backslash in rite-conjure-lib. Five gallery-build hazards join the grimoire
+(73–77): unset `write`, char-vs-string, second-tick ids, dotfile hangs,
+unparenthesised `either error? try`.
+
 ## v0.17.0 (2026-09-30) — the frame becomes data; R/S meets its wall
 
 **The frame is a dialect now.** `con-forge-frame` no longer imperatively

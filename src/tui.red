@@ -44,6 +44,7 @@ Red [Title: "imp" Needs: View]
 ; freeze is a painting, not a hang. Hazard 23, sealed by rite-flame.
 
 do %conjure-lib.red
+do %gallery.red
 
 ; ── the evil opening posture ────────────────────────────────────────
 ; The window does not remember anything, and it does not open the same way
@@ -128,6 +129,8 @@ idle-flame: " "
 ; send-event type 'click), so the rite calls this and the human clicks
 ; it — same words either way. Ends on `out`, never on a conditional.
 con-press: func [/local out sz-text n enh hi][
+    ; A press means the eyes are open: the greeter has done its once.
+    greet-face/visible?: no
     out: "already painting."
     either (busy-face/text = "1") [
         status-face/text: "already painting."
@@ -191,6 +194,50 @@ con-press: func [/local out sz-text n enh hi][
             ]
         ]
     ]
+    ]
+    out
+]
+; ── filing. Called once per successful conjure, with the law's dirs
+; in production and a sandbox under rite. Reads the faces (the wish
+; as it stands, the chosen style/hand/size) and con-frame, the text
+; just painted. Never throws, never touches the status line: gal-add
+; answers "" when anything failed, and the conjure already landed.
+; Ends on `out`, never on a conditional.
+con-file-painting: func [art [string!] cache [string!] /local out wish si hi sz-text n][
+    out: ""
+    wish: ""
+    either (wish-face/text = none) [wish: ""][wish: wish-face/text]
+    si: style-dd/selected
+    either (si = none) [si: 1][]
+    hi: hand-dd/selected
+    either (hi = none) [hi: 1][]
+    sz-text: "512"
+    either (size-dd/text = none) [][sz-text: form size-dd/text]
+    either (size-custom/text = none) [][
+        either ((length? size-custom/text) = 0) [][sz-text: size-custom/text]
+    ]
+    n: try [to integer! sz-text]
+    either (error? n) [n: 512][either (n <= 0) [n: 512][]]
+    out: gal-add art cache wish (con-get-style-name si) (con-get-hand-name hi) n con-frame
+    out
+]
+; ── the greeter. First run only: no marker in the cache dir, the
+; overlay shows and the mark is made at once, so the next opening
+; stays quiet even if this one quits before conjuring. The overlay
+; is a plain text face — the imp's glyph belongs to the SIGIL agent
+; (never touch SIGIL.md/assets), and this machinery, show once and
+; hide on press, is all that lives here. Ends on `out`.
+con-greet: func [/local out][
+    out: false
+    either ((length? CON-CACHE-DIR) = 0) [
+    ][
+        either (gallery-first? CON-CACHE-DIR) [
+            greet-face/visible?: yes
+            gallery-mark CON-CACHE-DIR
+            out: true
+        ][
+            greet-face/visible?: no
+        ]
     ]
     out
 ]
@@ -421,6 +468,11 @@ win: layout/flags [
                     busy-face/text: "0"
                     con-calm
                     pic-face/image: CON-PIC
+                    ; File the painting. Failure files nothing and says
+                    ; nothing: the status line may lie by omission only.
+                    if (((length? CON-ART-DIR) > 0) and ((length? CON-CACHE-DIR) > 0)) [
+                        con-file-painting CON-ART-DIR CON-CACHE-DIR
+                    ]
                     status-face/text: "ready. wish again."
                     flame-face/text: idle-flame
                 ][
@@ -453,6 +505,8 @@ win: layout/flags [
         ]
     ]
     return
+    greet-face: text 300 "the imp wakes. it remembers nothing. wish, and it will paint." font [name: "DejaVu Sans Mono" color: 200.155.224 size: 10]
+    return
     pic-face: image 300x300 pic
 ] [resize]
 ; ── the opening preset. Ordinary code, after the layout: the faces
@@ -462,3 +516,6 @@ size-dd/selected: to integer! ((h // 7) + 1)
 style-dd/selected: 1
 ; Turbo opens: the standing hand, and the slider agrees with it.
 hand-dd/selected: 1
+; The greeter performs once and never again. Marked at show time,
+; so quitting early still counts as having been welcomed.
+con-greet

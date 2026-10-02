@@ -121,6 +121,11 @@ CON-H: to integer! con-get "h" "512"
 
 CON-STEPS: to integer! con-get "steps" "4"
 CON-CFG:   to integer! con-get "cfg" "1"
+; The gallery's two dirs, told by the launcher. Empty under a rite
+; (no env file), and every greeter/filing path guards on that: never
+; file to "/" by accident, never greet a test window.
+CON-ART-DIR: con-get "art" ""
+CON-CACHE-DIR: con-get "cache" ""
 con-say rejoin ["env sd=" mold CON-SD " model=" mold CON-MODEL " w=" mold CON-W]
 
 CON-INK:  [236 228 214]
@@ -265,12 +270,23 @@ con-cm: to string! to char! 44
 con-co: to string! to char! 58
 con-bk: to string! to char! 93
 
-; IT LOOPS. `replace` escaped only the FIRST quote. Hazard 37.
-con-esc: func [s [string!] /local o][
-    o: copy s
-    while [(find o con-bs)][o: replace o con-bs rejoin [con-bs con-bs]]
-    while [(find o con-dq)][o: replace o con-dq rejoin [con-bs con-dq]]
-    o
+; SINGLE PASS. The old spelling looped `while [(find o dq)]` with
+; `replace` — but the replacement contains the needle, so find
+; re-matched its own output forever. Any wish with a quotation mark
+; hung the whole conjure with no witness; only the mouth's standing
+; order against quotes kept it from ever firing. Hazard 37's loop is
+; retired, not widened: the single pass below terminates by count.
+con-esc: func [s [string!] /local out i n cs][
+    out: copy ""
+    n: length? s
+    i: 0
+    while [i < n][
+        i: i + 1
+        cs: to string! pick s i
+        if ((cs = con-bs) or (cs = con-dq)) [append out con-bs]
+        append out cs
+    ]
+    out
 ]
 
 con-kv: func [k [string!] v [string!]][

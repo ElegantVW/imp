@@ -75,6 +75,9 @@ if [[ -z "$WISH" ]] && [[ -t 0 ]] && [[ -n "${DISPLAY:-}" ]]; then
   # measured: `mold :getenv` is `unset` — and calling a missing function
   # at the top level kills the rite before it can testify at all. So the
   # launcher writes down what it knows and the program reads it off disk.
+  # The gallery rides along: paintings under ~/pixie_art, the ledger
+  # under ~/.cache/pixie/imp (state law), made here.
+  mkdir -p "$HOME/pixie_art" "$HOME/.cache/pixie/imp"
   cat > "$SHM/imp-env.txt" <<ENV
 sd=$SD
 sd-lib=$SD_LIB
@@ -87,6 +90,8 @@ steps=$SD_STEPS
 cfg=$SD_CFG
 llm=$LLM
 llm-url=$LLM_URL
+art=$HOME/pixie_art
+cache=$HOME/.cache/pixie/imp
 ENV
 
   # One console instance, and it must be dead before this one starts.

@@ -64,6 +64,17 @@ say "J2 name-repeat: " [either ((((con-get-style-name 3) = "Mignola") and ((con-
 ; ── Pony reads score tags, everyone else reads prose ──────────────────
 say "J3 hand-prefix: " [either (((con-hand-prefix 3) = "score_9, score_8_up, score_7_up, ") and ((con-hand-prefix 1) = "")) ["SEALED"]["BROKEN"]]
 
+; ── the escaper terminates on quotes and backslashes, adding
+; exactly one backslash per special. The old find/replace loop
+; re-matched its own output forever (a quoted wish hung everything
+; with no witness); length math proves termination AND correctness.
+; No backslash-quote literals anywhere near this file (hazard 35).
+esc-q: con-esc {say "hi" now}
+esc-b: con-esc "C:\path\x"
+say "H esc-terms: " [either (((length? esc-q) = ((length? {say "hi" now}) + 2)) and ((length? esc-b) = ((length? "C:\path\x") + 2))) ["SEALED"]["BROKEN"]]
+say "   esc-q: " [esc-q]
+say "   esc-b: " [esc-b]
+
 say "E single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/conjure-lib-tmp.txt rejoin led
