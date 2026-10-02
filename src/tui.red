@@ -255,6 +255,7 @@ con-show-view: func [v [string!] /local out m g b][
     gal-show-btn/visible?: b
     gal-area/visible?: b
     gal-back-btn/visible?: b
+    gal-meta-face/visible?: b
     out
 ]
 ; ── entering the gallery. Shows the view, then reads the true
@@ -278,6 +279,7 @@ con-gallery-refresh: func [art [string!] cache [string!] /local out rows labels 
         gal-dd/data: ["(empty)"]
         gal-dd/selected: 1
         gal-area/text: "the gallery is empty. conjure something."
+        gal-meta-face/text: "no paintings filed."
     ]
     out
 ]
@@ -289,15 +291,18 @@ con-gallery-show: func [art [string!] cache [string!] /local out rows i e eid t]
     e: pick rows i
     either (e = none) [
         gal-area/text: "nothing chosen."
+        gal-meta-face/text: ""
         out: "nothing chosen."
     ][
         eid: gal-field e "id"
         t: try [read (gal-entry-file art eid)]
         either (error? t) [
             gal-area/text: "the painting is gone."
+            gal-meta-face/text: "the painting is gone."
             out: "the painting is gone."
         ][
             gal-area/text: gal-plain t
+            gal-meta-face/text: rejoin [(gal-field e "wish") " | " (gal-field e "style") " | " (gal-field e "hand") " | " (gal-num e "size") " | hour " (gal-num e "hour")]
             out: eid
         ]
     ]
@@ -556,13 +561,13 @@ win: layout/flags [
     gen-btn: button 100 "generate" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-show-view "generate"]
     return
     wish-lab: text 40 "wish" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
-    wish-face: field 200 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
+    wish-face: field 200 font [name: "DejaVu Sans Mono" color: 26.18.24 size: 12]
     conjure-btn: button 120 "conjure" font [name: "DejaVu Sans Mono" color: 26.18.24 size: 11 style: 'bold] [con-press]
     quit-btn: button 60 "quit" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-quit]
     return
     size-lab: text 40 "size" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     size-dd: drop-down 100 data SIZES font [name: "DejaVu Sans Mono" color: 240.228.238]
-    size-custom: field 80 font [name: "DejaVu Sans Mono" color: 240.228.238 size: 12]
+    size-custom: field 80 font [name: "DejaVu Sans Mono" color: 26.18.24 size: 12]
     busy-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
     hand-lab: text 40 "hand" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
@@ -574,11 +579,11 @@ win: layout/flags [
     return
     style-lab: text 40 "style" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     style-dd: drop-down 150 data CON-STYLE-NAMES font [name: "DejaVu Sans Mono" color: 240.228.238]
-    enh-btn: button 120 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-enhance]
+    enh-btn: button 150 "enhance: on" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-enhance]
     gen-back-btn: button 60 "menu" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-show-view "menu"]
     rw-face: text 10 "0" font [color: 26.18.24 size: 1]
     return
-    status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
+    status-face: text 300 ready-text font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11]
     dot-face: text 10 "0" font [color: 26.18.24 size: 1]
     flame-face: text 110 idle-flame font [name: "DejaVu Sans Mono" color: 232.160.180 size: 14] rate 0:0:0.06 on-time [
         either ((busy-face/text = "1") or ((rw-face/text) = "1")) [
@@ -607,11 +612,13 @@ win: layout/flags [
     ]
     return
     gal-lab: text 40 "saved" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
-    gal-dd: drop-down 150 data ["(empty)"] font [name: "DejaVu Sans Mono" color: 240.228.238]
+    gal-dd: drop-down 200 data ["(empty)"] font [name: "DejaVu Sans Mono" color: 240.228.238]
     gal-show-btn: button 80 "show" font [name: "DejaVu Sans Mono" color: 200.155.224 size: 11] [con-gallery-show CON-ART-DIR CON-CACHE-DIR]
     return
     gal-area: area 280x150 "the gallery is empty. conjure something." font [name: "DejaVu Sans Mono" color: 240.228.238 size: 10]
     gal-back-btn: button 80 "back" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 11] [con-show-view "menu"]
+    return
+    gal-meta-face: text 300 "" font [name: "DejaVu Sans Mono" color: 107.111.168 size: 9]
     return
     pic-face: image 300x300 pic
 ] [resize]

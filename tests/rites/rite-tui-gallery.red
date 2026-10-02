@@ -113,6 +113,16 @@ either (faces >= 1) [
     say "T8 image-last: " ["BROKEN, empty pane"]
 ]
 
+; ── U: the look pass, asserted where faces allow ───────────────────
+say "U1 enhance-fits: " [either ((enh-btn/size/x) >= 140) ["SEALED"]["BROKEN"]]
+say "   width: " [enh-btn/size/x]
+say "U2 fields-dark: " [either (((mold wish-face/font/color) = "26.18.24") and ((mold size-custom/font/color) = "26.18.24")) ["SEALED"]["BROKEN"]]
+say "U3 dd-wide: " [either ((gal-dd/size/x) = 200) ["SEALED"]["BROKEN"]]
+con-gallery-enter ART CACHE
+say "U4 meta-shows: " [either (((find gal-meta-face/text "w-browse-one") <> none) and ((find gal-meta-face/text "hour") <> none)) ["SEALED"]["BROKEN"]]
+say "   meta: " [gal-meta-face/text]
+say "U5 status-readable: " [either ((status-face/font/size) = 11) ["SEALED"]["BROKEN"]]
+
 say "Z single-write: " ["SEALED - this file is the only product"]
 
 write %/dev/shm/imp/tui-gallery-tmp.txt rejoin led

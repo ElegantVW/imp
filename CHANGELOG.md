@@ -1,5 +1,15 @@
 # Imp changelog
 
+## v0.20.0 (2026-10-02) — the look pass, first coat
+
+**Readability before beauty.** Five items, in the order given: the
+enhance button is 150 wide so `enhance: on` fits one line; wish and
+custom-size fields use a dark font (typed words were near-white on
+native white — invisible); the gallery drop-down is 200 wide; the
+preview carries a metadata line (`wish | style | hand | size | hour`);
+the status line reads at size 11. Sealed U1–U5 in rite-tui-gallery,
+A–Y untouched. Verified live on all three views, fullscreen.
+
 ## v0.19.0 (2026-10-02) — the starting table: gallery or generate
 
 **The menu opens every launch.** The one-line greeter is now a starting
