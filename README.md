@@ -8,6 +8,8 @@ Imp conjures ANSI art from a wish. A haiku dragon called Imp's Comment
 snarks about the result. Every piece is saved to `~/pixie_art/` as `.txt`
 (plus a dependency-free `.pdf`) and indexed in a gallery.
 
+For: terminal art commissions, all-ages. Not for: photo/image editing, anything touching the filesystem beyond its art dir.
+
 Imp is written in **Red** — and it is written to be *evil in its intent,
 harmless in its effect*. The code is arranged so that a reader feels
 watched, while the filesystem never notices. This is deliberate, it is
