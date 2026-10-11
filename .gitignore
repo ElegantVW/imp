@@ -45,3 +45,5 @@ bytes-probe.bin
 /libRedRT.so
 /.console-build
 /.console-build.red
+__pycache__/
+*.pyc
