@@ -1,5 +1,10 @@
 # Imp changelog
 
+## v3.3.3 3vil (2026-10-11)
+
+- Numbered triple. Grumpy dragon terminal art, evil in intent, harmless in effect.
+
+
 ## v0.21.0 (2026-10-02) — quit everywhere, dark previews, bigger paintings
 
 **Quit is on every view.** Menu and gallery rows each carry their own
